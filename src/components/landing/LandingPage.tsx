@@ -370,7 +370,7 @@ export default function A1aiLanding() {
                 <span style={{ background: '#54E8D6' }}>NV</span>
               </div>
               <p>
-                Trusted by <b>{count.toLocaleString()}+</b> students &amp; developers
+                <b>Launching Soon</b>
               </p>
             </div>
           </div>
