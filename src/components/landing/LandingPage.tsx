@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  ElementType,
+  ReactNode,
+  MouseEvent as ReactMouseEvent,
+} from 'react';
 
 /**
  * A1.ai — futuristic landing page
@@ -139,13 +146,13 @@ function useReveal() {
   }, []);
 }
 
-function useTypingCycle(strings, speed = 22, hold = 2200) {
+function useTypingCycle(strings: string[], speed = 22, hold = 2200) {
   const [text, setText] = useState('');
   useEffect(() => {
     let i = 0;
     let charIndex = 0;
     let deleting = false;
-    let timer;
+    let timer: ReturnType<typeof setTimeout>;
 
     const tick = () => {
       const full = strings[i];
@@ -176,9 +183,9 @@ function useTypingCycle(strings, speed = 22, hold = 2200) {
   return text;
 }
 
-function useCountUp(target, duration = 1400) {
+function useCountUp(target: number, duration = 1400): [number, React.RefObject<HTMLDivElement | null>] {
   const [value, setValue] = useState(0);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const started = useRef(false);
   useEffect(() => {
     const node = ref.current;
@@ -189,7 +196,7 @@ function useCountUp(target, duration = 1400) {
           if (e.isIntersecting && !started.current) {
             started.current = true;
             const start = performance.now();
-            const step = (now) => {
+            const step = (now: number) => {
               const p = Math.min((now - start) / duration, 1);
               const eased = 1 - Math.pow(1 - p, 3);
               setValue(Math.round(target * eased));
@@ -211,9 +218,17 @@ function useCountUp(target, duration = 1400) {
 /* Feature card with cursor-tracked spotlight                          */
 /* ------------------------------------------------------------------ */
 
-function FeatureCard({ f, index }) {
-  const ref = useRef(null);
-  const onMove = (e) => {
+interface Feature {
+  id: string;
+  accent: string;
+  title: string;
+  desc: string;
+  icon: ReactNode;
+}
+
+function FeatureCard({ f, index }: { f: Feature; index: number }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const onMove = (e: ReactMouseEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -241,9 +256,16 @@ function FeatureCard({ f, index }) {
   );
 }
 
-function MagneticButton({ as: As = 'a', className = '', children, ...props }) {
-  const ref = useRef(null);
-  const onMove = (e) => {
+interface MagneticButtonProps {
+  as?: ElementType;
+  className?: string;
+  children?: ReactNode;
+  [key: string]: any;
+}
+
+function MagneticButton({ as: As = 'a', className = '', children, ...props }: MagneticButtonProps) {
+  const ref = useRef<HTMLElement | null>(null);
+  const onMove = (e: ReactMouseEvent<HTMLElement>) => {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
