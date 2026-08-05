@@ -15,6 +15,7 @@ import {
   UserButton,
   useUser,
 } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 /**
  * A1.ai — futuristic landing page
@@ -301,6 +302,13 @@ export default function A1aiLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
   const { isSignedIn } = useUser();
+  const router = useRouter();
+
+useEffect(() => {
+  if (isSignedIn) {
+    router.replace("/dashboard");
+  }
+}, [isSignedIn, router]);
 
   return (
     <>
