@@ -8,6 +8,11 @@ import {
   ReactNode,
   MouseEvent as ReactMouseEvent,
 } from 'react';
+import Link from "next/link";
+import {
+  SignInButton,
+  SignUpButton,
+} from "@clerk/nextjs";
 
 /**
  * A1.ai — futuristic landing page
@@ -302,12 +307,12 @@ export default function A1aiLanding() {
 
       <header>
         <div className="container nav">
-          <a href="#" className="logo">
+          <Link href="/" className="logo">
             <span className="mark">
               <span className="mark-core" />
             </span>
             A1.ai
-          </a>
+          </Link>
           <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
             <a href="#" onClick={() => setMenuOpen(false)}>Home</a>
             <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
@@ -315,10 +320,17 @@ export default function A1aiLanding() {
             <a href="#about" onClick={() => setMenuOpen(false)}>About</a>
           </nav>
           <div className="nav-actions">
-            <a href="#" className="btn btn-ghost">Log in</a>
-            <MagneticButton className="btn btn-primary">
-              Start free <ArrowIcon />
-            </MagneticButton>
+            <SignInButton mode="modal">
+  <button className="btn btn-ghost login-btn">
+    Log in
+  </button>
+</SignInButton>
+            <SignUpButton mode="modal">
+  <MagneticButton className="btn btn-primary">
+    Start free
+    <ArrowIcon />
+  </MagneticButton>
+</SignUpButton>
             <button
               className="menu-toggle"
               aria-label="Toggle menu"
@@ -355,9 +367,12 @@ export default function A1aiLanding() {
               so you Stop switching between ChatGPT, Claude, Gemini, and dozens of AI tools. A1.ai brings everything into one beautiful workspace.
             </p>
             <div className="hero-actions">
-              <MagneticButton className="btn btn-primary btn-lg">
-                Start free <ArrowIcon />
-              </MagneticButton>
+              <SignUpButton mode="modal">
+  <MagneticButton className="btn btn-primary">
+    Start free
+    <ArrowIcon />
+  </MagneticButton>
+</SignUpButton>
               <MagneticButton className="btn btn-outline btn-lg">
                 <PlayIcon /> Live demo
               </MagneticButton>
@@ -506,9 +521,12 @@ export default function A1aiLanding() {
             and the job hunt <span className="grad-text">faster</span>.
           </h2>
           <p>Free to start. No credit card required.</p>
-          <MagneticButton className="btn btn-primary btn-lg">
-            Start free <ArrowIcon />
-          </MagneticButton>
+          <SignUpButton mode="modal">
+  <MagneticButton className="btn btn-primary">
+    Start free
+    <ArrowIcon />
+  </MagneticButton>
+</SignUpButton>
         </div>
       </section>
 
