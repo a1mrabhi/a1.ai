@@ -12,6 +12,8 @@ import Link from "next/link";
 import {
   SignInButton,
   SignUpButton,
+  UserButton,
+  useUser,
 } from "@clerk/nextjs";
 
 /**
@@ -298,6 +300,7 @@ export default function A1aiLanding() {
   const [count, countRef] = useCountUp(10000);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const { isSignedIn } = useUser();
 
   return (
     <>
@@ -320,26 +323,37 @@ export default function A1aiLanding() {
             <a href="#about" onClick={() => setMenuOpen(false)}>About</a>
           </nav>
           <div className="nav-actions">
-            <SignInButton mode="modal">
-  <button className="btn btn-ghost login-btn">
-    Log in
-  </button>
-</SignInButton>
-            <SignUpButton mode="modal">
-  <MagneticButton className="btn btn-primary">
-    Start free
-    <ArrowIcon />
-  </MagneticButton>
-</SignUpButton>
-            <button
-              className="menu-toggle"
-              aria-label="Toggle menu"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              <span />
-              <span />
-            </button>
-          </div>
+
+  {!isSignedIn ? (
+    <>
+      <SignInButton mode="modal">
+        <button className="btn btn-ghost login-btn">
+          Log in
+        </button>
+      </SignInButton>
+
+      <SignUpButton mode="modal">
+        <MagneticButton className="btn btn-primary">
+          Start free
+          <ArrowIcon />
+        </MagneticButton>
+      </SignUpButton>
+    </>
+  ) : (
+    <>
+     
+
+      <UserButton
+        appearance={{
+          elements: {
+            avatarBox: "w-10 h-10",
+          },
+        }}
+      />
+    </>
+  )}
+
+</div>
         </div>
       </header>
 
