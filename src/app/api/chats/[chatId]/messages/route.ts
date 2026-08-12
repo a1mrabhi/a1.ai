@@ -7,7 +7,7 @@ import { generateAIResponse } from "@/lib/ai";
 // Load previous messages
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ chatId: string }> }
+  { params }: { params: Promise<{ chatId: string }> },
 ) {
   try {
     const { chatId } = await params;
@@ -28,7 +28,7 @@ export async function GET(
           success: false,
           message: "Chat not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -53,7 +53,7 @@ export async function GET(
         success: false,
         message: "Could not load messages",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -62,7 +62,7 @@ export async function GET(
 // Send message + generate AI response
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ chatId: string }> }
+  { params }: { params: Promise<{ chatId: string }> },
 ) {
   try {
     const { chatId } = await params;
@@ -76,7 +76,7 @@ export async function POST(
           success: false,
           message: "Message content is required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -96,7 +96,7 @@ export async function POST(
           success: false,
           message: "Chat not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -112,9 +112,7 @@ export async function POST(
     // Give chat a title based on first message
     if (chat.title === "New Chat") {
       const title =
-        content.length > 40
-          ? `${content.substring(0, 40)}...`
-          : content;
+        content.length > 40 ? `${content.substring(0, 40)}...` : content;
 
       await prisma.chat.update({
         where: {
@@ -137,37 +135,39 @@ export async function POST(
     });
 
     // Convert DB messages to AI messages
-const aiMessages = [
-  {
-    role: "system" as const,
-    content: `
-You are the AI assistant inside a smart chat application.
+    const aiMessages = [
+      {
+        role: "system" as const,
+        content: `You are the AI assistant inside a smart chat application.
 
-Be helpful, natural, and concise.
+DEFAULT MODE: BRIEF
+- Answer in 1-3 sentences by default. No exceptions unless triggered below.
+- Greetings: 1 short sentence.
+- Simple/factual questions: 1-3 sentences, no headings, no bullet lists, no extra context.
+- When asked "tell me about X", give only the single most relevant/well-known meaning. Do NOT list every other event, country, or tradition tied to it.
+- Only mention additional meanings if the user explicitly asks "what else" or "what other things happened".
+- Do NOT use bold headers or multiple bullet sections for a simple question.
 
-Rules:
-- For simple greetings, give a short friendly response.
-- For simple questions, answer directly without unnecessary detail.
-- Do not give long introductions unless the user asks for one.
-- Do not list everything you can do unless the user asks "what can you do?"
-- Match the length of your answer to the user's question.
-- Give detailed explanations only when the user asks for details.
-- Use bullets or short paragraphs when they improve readability.
-- Never repeat the user's question unnecessarily.
-`,
-  },
+DETAILED MODE (only when user explicitly asks):
+- Trigger words: "detail", "explain", "define", "elaborate", "steps", "example", "why", "how does it work", "deep dive", "list all".
+- Only then: use headings, bullets, multiple points, and longer explanations.
 
-  ...messages.map((message) => ({
-    role:
-      message.role === "USER"
-        ? ("user" as const)
-        : ("assistant" as const),
-    content: message.content,
-  })),
-];
+FORMATTING:
+- Markdown only when it aids readability (bold for key terms, bullets only in detailed mode).
+- Never repeat the user's question back to them.
+- Never pad with intros like "Great question!" or "Sure, here's...".
 
-// Gemini → Groq fallback
-const aiResponse = await generateAIResponse(aiMessages);
+If unsure whether brief or detailed is expected, default to BRIEF.`,
+      },
+      ...messages.map((message) => ({
+        role:
+          message.role === "USER" ? ("user" as const) : ("assistant" as const),
+        content: message.content,
+      })),
+    ];
+
+    // Gemini → Groq fallback
+    const aiResponse = await generateAIResponse(aiMessages);
 
     // Save AI response
     const assistantMessage = await prisma.message.create({
@@ -192,7 +192,7 @@ const aiResponse = await generateAIResponse(aiMessages);
         success: false,
         message: "Could not send message",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
