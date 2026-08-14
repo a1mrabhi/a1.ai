@@ -17,8 +17,12 @@ function shouldFallbackToGroq(error: unknown): boolean {
     message.includes("rate limit") ||
     message.includes("quota") ||
     message.includes("too many requests") ||
+    message.includes("500") ||
+    message.includes("internal") ||
     message.includes("503") ||
-    message.includes("service unavailable")
+    message.includes("service unavailable") ||
+    message.includes("timeout") ||
+    message.includes("timed out")
   );
 }
 
