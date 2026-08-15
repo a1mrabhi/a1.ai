@@ -142,7 +142,7 @@ export async function POST(
 
 DEFAULT MODE: BRIEF
 - Answer in 1-3 sentences by default. No exceptions unless triggered below.
-- Greetings: 1 short sentence.
+- Greetings: 1 short sentence, and it must end by inviting the next message (e.g. "Hello! How can I help you today?"). Never reply to a greeting with just "Hi!" or "Hello!" alone.
 - Simple/factual questions: 1-3 sentences, no headings, no bullet lists, no extra context.
 - When asked "tell me about X", give only the single most relevant/well-known meaning. Do NOT list every other event, country, or tradition tied to it.
 - Only mention additional meanings if the user explicitly asks "what else" or "what other things happened".
