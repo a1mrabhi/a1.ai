@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -15,6 +15,8 @@ import {
   Search,
   Trash2,
   MessageSquare,
+  Copy,
+  Check,
 } from "lucide-react";
 
 type Chat = {
@@ -120,35 +122,82 @@ function MessageBubble({
 }) {
   const isUser = msg.role === "USER";
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.error("Copy failed:", error);
+    }
+  };
+
   return (
     <div
-      className={`msg-fade flex gap-3 max-w-2xl ${
-        isUser ? "ml-auto flex-row-reverse" : ""
+      className={`msg-fade flex flex-col max-w-[85%] min-w-0 ${
+        isUser ? "ml-auto items-end" : "items-start"
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <Avatar role={isUser ? "user" : "ai"} user={user} />
-
       <div
-        className={`px-4 py-3 text-lg leading-relaxed rounded-2xl ${
-          isUser
-            ? "bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-tr-sm shadow-lg"
-            : "bg-zinc-800 border border-zinc-700 text-zinc-100 rounded-tl-sm"
+        className={`flex gap-3 w-full min-w-0 ${
+          isUser ? "flex-row-reverse" : ""
         }`}
       >
-        {isUser ? (
-          <div className="whitespace-pre-wrap">{msg.content}</div>
-        ) : (
-          <div className="markdown-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {msg.content}
-            </ReactMarkdown>
-          </div>
-        )}
+        <Avatar role={isUser ? "user" : "ai"} user={user} />
+
+        <div
+          className={`px-4 py-3 text-lg leading-relaxed rounded-2xl min-w-0 max-w-full overflow-hidden ${
+            isUser
+              ? "bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-tr-sm shadow-lg"
+              : "bg-zinc-800 border border-zinc-700 text-zinc-100 rounded-tl-sm"
+          }`}
+        >
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{msg.content}</div>
+          ) : (
+            <div className="markdown-content min-w-0">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {msg.content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
       </div>
+
+      {!isUser && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="mt-1.5 ml-11 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors duration-200"
+          title="Copy response"
+          aria-label="Copy response"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-teal-400" />
+              <span className="text-teal-400">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }
+
+const SUGGESTED_QUESTIONS = [
+  "Write a short email for me",
+  "Explain this concept to me simply",
+  "Help me plan my day",
+  "Help me eat healthier",
+];
 
 export default function AISmartChat() {
   const { user } = useUser();
@@ -290,8 +339,8 @@ export default function AISmartChat() {
   // Send message
   // ------------------------------------------------------------
 
-  const handleSend = async () => {
-    const content = input.trim();
+  const handleSend = async (override?: string) => {
+    const content = (override ?? input).trim();
 
     if (!content || typing) return;
 
@@ -512,6 +561,30 @@ export default function AISmartChat() {
           animation: bounceDot 1.2s ease-in-out 0.3s infinite;
         }
 
+        @keyframes suggestionPulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.35);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1);
+          }
+
+          50% {
+            box-shadow: 0 0 0 6px rgba(167, 139, 250, 0);
+            border-color: rgba(167, 139, 250, 0.55);
+            transform: scale(1.03);
+          }
+        }
+
+        .suggestion-chip {
+          animation: fadeInUp 0.5s ease forwards,
+            suggestionPulse 2.6s ease-in-out infinite;
+          opacity: 0;
+        }
+
+        .suggestion-chip:hover {
+          animation-play-state: paused;
+        }
+
         .chat-scroll::-webkit-scrollbar {
           width: 6px;
         }
@@ -521,25 +594,87 @@ export default function AISmartChat() {
           border-radius: 999px;
         }
 
-        @keyframes borderFlow {
+        /* ------------------------------------------------ */
+        /* Input box: glass shimmer + pulsing glow border   */
+        /* + rising light particles                         */
+        /* ------------------------------------------------ */
+
+        .input-glow-box {
+          position: relative;
+          background: linear-gradient(135deg, #1e1b2e, #14181c);
+          border-radius: 15px;
+          border: 1px solid rgba(94, 234, 212, 0.25);
+          overflow: hidden;
+          animation: borderGlow 3.2s ease-in-out infinite;
+        }
+
+        .input-glow-box::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 40%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.12),
+            transparent
+          );
+          animation: shimmerSweep 3.5s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        @keyframes shimmerSweep {
           0% {
-            background-position: 0% 50%;
+            transform: translateX(-100%) skewX(-15deg);
           }
 
           100% {
-            background-position: 200% 50%;
+            transform: translateX(200%) skewX(-15deg);
           }
         }
 
-        .input-border-flow {
-          background: linear-gradient(
-            120deg,
-            rgba(167, 139, 250, 0.6),
-            rgba(94, 234, 212, 0.6),
-            rgba(167, 139, 250, 0.6)
-          );
-          background-size: 200% 100%;
-          animation: borderFlow 4s linear infinite;
+        @keyframes borderGlow {
+          0%, 100% {
+            box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.25);
+          }
+
+          50% {
+            box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.4);
+          }
+        }
+
+        @keyframes floatParticle {
+          0% {
+            transform: translateY(0) translateX(0);
+            opacity: 0;
+          }
+
+          15% {
+            opacity: 0.9;
+          }
+
+          85% {
+            opacity: 0.9;
+          }
+
+          100% {
+            transform: translateY(-18px) translateX(4px);
+            opacity: 0;
+          }
+        }
+
+        .spark {
+          position: absolute;
+          bottom: 8px;
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: #5eead4;
+          box-shadow: 0 0 6px 1.5px rgba(94, 234, 212, 0.9);
+          animation: floatParticle 3.6s ease-in-out infinite;
+          pointer-events: none;
         }
 
         .markdown-content p {
@@ -607,6 +742,7 @@ export default function AISmartChat() {
   padding: 1rem;
   border-radius: 0.75rem;
   overflow-x: auto;
+  max-width: 100%;
   margin: 0.75rem 0;
 }
 
@@ -802,12 +938,21 @@ export default function AISmartChat() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-base font-mono text-zinc-400 shadow-inner">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-60" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-400" />
-            </span>
-            AI connected
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-base text-zinc-300 hover:text-zinc-100 hover:border-purple-400/50 hover:bg-white/10 transition-all duration-200"
+            >
+              Dashboard
+            </Link>
+
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-base font-mono text-zinc-400 shadow-inner">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-400" />
+              </span>
+              AI connected
+            </div>
           </div>
         </header>
 
@@ -816,7 +961,7 @@ export default function AISmartChat() {
         {/* -------------------------------------------------- */}
 
         <div ref={scrollRef} className="chat-scroll flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-6">
+          <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
             {loadingMessages ? (
               <div className="text-center text-lg text-zinc-500 py-10">
                 Loading conversation...
@@ -835,6 +980,23 @@ export default function AISmartChat() {
                   Ask anything and your conversation will be saved
                   automatically.
                 </p>
+
+                <div className="mt-6 grid grid-cols-2 gap-2.5 w-full max-w-lg">
+                  {SUGGESTED_QUESTIONS.map((question, index) => (
+                    <button
+                      key={question}
+                      type="button"
+                      onClick={() => handleSend(question)}
+                      disabled={typing}
+                      style={{
+                        animationDelay: `${index * 80}ms, ${index * 250}ms`,
+                      }}
+                      className="suggestion-chip w-full h-full min-h-[3rem] px-3.5 py-2 rounded-xl text-base text-zinc-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/50 hover:text-zinc-100 transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:animate-none flex items-center justify-center text-center leading-snug"
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               messages.map((message, index) => (
@@ -848,7 +1010,7 @@ export default function AISmartChat() {
             )}
 
             {typing && (
-              <div className="flex gap-3 max-w-2xl">
+              <div className="flex gap-3 max-w-[85%]">
                 <Avatar role="ai" />
 
                 <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-zinc-800 border border-zinc-700 flex items-center gap-1.5">
@@ -868,9 +1030,9 @@ export default function AISmartChat() {
         {/* -------------------------------------------------- */}
 
         <div className="shrink-0 px-6 pb-6 pt-2">
-          <div className="max-w-2xl mx-auto">
-            <div className="input-border-flow p-[1px] rounded-2xl shadow-lg shadow-black/30">
-              <div className="relative flex items-end gap-2 rounded-[15px] bg-zinc-800/95 backdrop-blur-xl px-3 py-2">
+          <div className="max-w-3xl mx-auto">
+            <div className="input-glow-box relative shadow-lg shadow-black/30">
+              <div className="relative flex items-end gap-2 px-3 py-2">
                 <textarea
                   rows={1}
                   value={input}
@@ -878,13 +1040,13 @@ export default function AISmartChat() {
                   onKeyDown={handleKeyDown}
                   placeholder="Message AI Smart Chat..."
                   disabled={typing}
-                  className="flex-1 bg-transparent resize-none outline-none text-lg text-zinc-100 placeholder-zinc-500 py-2 max-h-32 disabled:opacity-50"
+                  className="flex-1 bg-transparent resize-none outline-none text-lg text-zinc-100 placeholder-zinc-500 py-2 max-h-32 disabled:opacity-50 relative z-10"
                 />
 
                 <button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={!input.trim() || typing}
-                  className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-teal-400 disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-opacity shadow-lg"
+                  className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-teal-400 disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-opacity shadow-lg relative z-10"
                 >
                   <ArrowUp
                     className="w-4 h-4 text-zinc-950"
@@ -892,6 +1054,19 @@ export default function AISmartChat() {
                   />
                 </button>
               </div>
+
+              <div
+                className="spark"
+                style={{ left: "20%", animationDelay: "0s" }}
+              />
+              <div
+                className="spark"
+                style={{ left: "55%", animationDelay: "1.2s" }}
+              />
+              <div
+                className="spark"
+                style={{ left: "80%", animationDelay: "2.2s" }}
+              />
             </div>
 
             <div className="text-center text-base font-mono text-zinc-600 mt-2">

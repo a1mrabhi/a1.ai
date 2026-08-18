@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   useEffect,
@@ -7,14 +7,9 @@ import {
   ElementType,
   ReactNode,
   MouseEvent as ReactMouseEvent,
-} from 'react';
+} from "react";
 import Link from "next/link";
-import {
-  SignInButton,
-  SignUpButton,
-  UserButton,
-  useUser,
-} from "@clerk/nextjs";
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 
 /**
  * A1.ai — futuristic landing page
@@ -31,19 +26,19 @@ import {
 
 const FEATURES = [
   {
-    id: 'chat',
-    accent: 'violet',
-    title: 'AI Chat',
-    desc: 'Ask questions in plain language and get answers grounded in your own notes and course material, not generic web results.',
+    id: "chat",
+    accent: "violet",
+    title: "AI Chat",
+    desc: "Ask questions in plain language and get answers grounded in your own notes and course material, not generic web results.",
     icon: (
       <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
     ),
   },
   {
-    id: 'pdf',
-    accent: 'amber',
-    title: 'PDF Chat',
-    desc: 'Drop in a textbook chapter or research paper and ask it questions directly. Every answer points back to the exact page.',
+    id: "pdf",
+    accent: "amber",
+    title: "PDF Chat",
+    desc: "Drop in a textbook chapter or research paper and ask it questions directly. Every answer points back to the exact page.",
     icon: (
       <>
         <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
@@ -52,9 +47,9 @@ const FEATURES = [
     ),
   },
   {
-    id: 'resume',
-    accent: 'cyan',
-    title: 'Resume Analyzer',
+    id: "resume",
+    accent: "cyan",
+    title: "Resume Analyzer",
     desc: "Get line-by-line feedback against the role you're applying for, plus a gap list of skills recruiters are screening for.",
     icon: (
       <>
@@ -65,9 +60,9 @@ const FEATURES = [
     ),
   },
   {
-    id: 'study',
-    accent: 'coral',
-    title: 'Study Assistant',
+    id: "study",
+    accent: "coral",
+    title: "Study Assistant",
     desc: "Turn lecture slides or readings into structured notes and practice questions, sorted by what you're weakest on.",
     icon: (
       <>
@@ -82,51 +77,51 @@ const TESTIMONIALS = [
   {
     quote:
       "I used the resume analyzer before three internship applications and got callbacks on two. It caught vague bullet points I'd read past a dozen times.",
-    name: 'Jordan M.',
-    role: 'CS Junior, Applying to Internships',
-    color: '#FFC857',
-    initials: 'JM',
+    name: "Jordan M.",
+    role: "CS Junior, Applying to Internships",
+    color: "#FFC857",
+    initials: "JM",
   },
   {
     quote:
-      'PDF Chat replaced my habit of skimming 40-page papers the night before seminar. I can ask it what the methodology section actually claims.',
-    name: 'Riya S.',
-    role: 'Grad Student, Comp Bio',
-    color: '#8C7CF0',
-    initials: 'RS',
+      "PDF Chat replaced my habit of skimming 40-page papers the night before seminar. I can ask it what the methodology section actually claims.",
+    name: "Riya S.",
+    role: "Grad Student, Comp Bio",
+    color: "#8C7CF0",
+    initials: "RS",
   },
   {
     quote:
       "The study assistant turns my lecture slides into practice questions automatically. It's the closest thing to having a TA on call at 1am.",
-    name: 'Tomás K.',
-    role: 'Bootcamp Grad, Now Junior Dev',
-    color: '#54E8D6',
-    initials: 'TK',
+    name: "Tomás K.",
+    role: "Bootcamp Grad, Now Junior Dev",
+    color: "#54E8D6",
+    initials: "TK",
   },
 ];
 
 const FAQS = [
   {
-    q: 'Is A1.ai free to use?',
-    a: 'Yes — the free plan includes AI Chat, up to 10 PDF uploads a month, and one resume analysis. Paid plans remove those limits and add unlimited study notes.',
+    q: "Is A1.ai free to use?",
+    a: "Yes — the free plan includes AI Chat, up to 10 PDF uploads a month, and one resume analysis. Paid plans remove those limits and add unlimited study notes.",
   },
   {
-    q: 'Does it work with course PDFs and scanned readings?',
-    a: 'Yes, including scanned documents — A1.ai runs OCR automatically so you can still ask questions about a photographed textbook page.',
+    q: "Does it work with course PDFs and scanned readings?",
+    a: "Yes, including scanned documents — A1.ai runs OCR automatically so you can still ask questions about a photographed textbook page.",
   },
   {
-    q: 'How is the resume feedback generated?',
-    a: 'You paste in a job description alongside your resume, and A1.ai compares the two line by line, flagging missing keywords and weak phrasing recruiters tend to skip past.',
+    q: "How is the resume feedback generated?",
+    a: "You paste in a job description alongside your resume, and A1.ai compares the two line by line, flagging missing keywords and weak phrasing recruiters tend to skip past.",
   },
   {
-    q: 'Can I cancel anytime?',
+    q: "Can I cancel anytime?",
     a: "Yes, no contracts. Cancel from your account settings and you'll keep access until the end of your current billing period.",
   },
 ];
 
 const SUGGESTIONS = [
   'Lead with the outcome, not the task — try "Cut API latency 40%" instead of "Worked on backend performance."',
-  'This bullet buries the result. Move the metric to the front so it survives a 6-second recruiter scan.',
+  "This bullet buries the result. Move the metric to the front so it survives a 6-second recruiter scan.",
   'Swap "responsible for" for an action verb — "Shipped," "Led," "Reduced" all score higher on ATS parsing.',
 ];
 
@@ -136,17 +131,17 @@ const SUGGESTIONS = [
 
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('[data-reveal]');
+    const els = document.querySelectorAll("[data-reveal]");
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) {
-            e.target.classList.add('is-in');
+            e.target.classList.add("is-in");
             io.unobserve(e.target);
           }
         });
       },
-      { threshold: 0.16, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.16, rootMargin: "0px 0px -40px 0px" },
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
@@ -154,7 +149,7 @@ function useReveal() {
 }
 
 function useTypingCycle(strings: string[], speed = 22, hold = 2200) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   useEffect(() => {
     let i = 0;
     let charIndex = 0;
@@ -190,7 +185,10 @@ function useTypingCycle(strings: string[], speed = 22, hold = 2200) {
   return text;
 }
 
-function useCountUp(target: number, duration = 1400): [number, React.RefObject<HTMLDivElement | null>] {
+function useCountUp(
+  target: number,
+  duration = 1400,
+): [number, React.RefObject<HTMLDivElement | null>] {
   const [value, setValue] = useState(0);
   const ref = useRef<HTMLDivElement | null>(null);
   const started = useRef(false);
@@ -213,7 +211,7 @@ function useCountUp(target: number, duration = 1400): [number, React.RefObject<H
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.5 },
     );
     io.observe(node);
     return () => io.disconnect();
@@ -239,8 +237,8 @@ function FeatureCard({ f, index }: { f: Feature; index: number }) {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
-    el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--my", `${e.clientY - r.top}px`);
   };
   return (
     <div
@@ -252,7 +250,14 @@ function FeatureCard({ f, index }: { f: Feature; index: number }) {
     >
       <div className="feature-spot" />
       <div className="feature-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           {f.icon}
         </svg>
       </div>
@@ -270,7 +275,12 @@ interface MagneticButtonProps {
   [key: string]: any;
 }
 
-function MagneticButton({ as: As = 'a', className = '', children, ...props }: MagneticButtonProps) {
+function MagneticButton({
+  as: As = "a",
+  className = "",
+  children,
+  ...props
+}: MagneticButtonProps) {
   const ref = useRef<HTMLElement | null>(null);
   const onMove = (e: ReactMouseEvent<HTMLElement>) => {
     const el = ref.current;
@@ -281,10 +291,16 @@ function MagneticButton({ as: As = 'a', className = '', children, ...props }: Ma
     el.style.transform = `translate(${x}px, ${y}px)`;
   };
   const onLeave = () => {
-    if (ref.current) ref.current.style.transform = 'translate(0,0)';
+    if (ref.current) ref.current.style.transform = "translate(0,0)";
   };
   return (
-    <As ref={ref} className={`magnetic ${className}`} onMouseMove={onMove} onMouseLeave={onLeave} {...props}>
+    <As
+      ref={ref}
+      className={`magnetic ${className}`}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      {...props}
+    >
       {children}
     </As>
   );
@@ -301,7 +317,6 @@ export default function A1aiLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
   const { isSignedIn } = useUser();
- 
 
   return (
     <>
@@ -317,44 +332,44 @@ export default function A1aiLanding() {
             </span>
             A1.ai
           </Link>
-          <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
-            <a href="#" onClick={() => setMenuOpen(false)}>Home</a>
-            <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
-            <a href="#about" onClick={() => setMenuOpen(false)}>About</a>
+          <nav className={`nav-links ${menuOpen ? "open" : ""}`}>
+            <a href="#" onClick={() => setMenuOpen(false)}>
+              Home
+            </a>
+            <a href="#features" onClick={() => setMenuOpen(false)}>
+              Features
+            </a>
+            {/* <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a> */}
+            <a href="#about" onClick={() => setMenuOpen(false)}>
+              About
+            </a>
           </nav>
           <div className="nav-actions">
+            {!isSignedIn ? (
+              <>
+                <SignInButton mode="modal">
+                  <button className="btn btn-ghost login-btn">Log in</button>
+                </SignInButton>
 
-  {!isSignedIn ? (
-    <>
-      <SignInButton mode="modal">
-        <button className="btn btn-ghost login-btn">
-          Log in
-        </button>
-      </SignInButton>
-
-      <SignUpButton mode="modal">
-        <MagneticButton className="btn btn-primary">
-          Start free
-          <ArrowIcon />
-        </MagneticButton>
-      </SignUpButton>
-    </>
-  ) : (
-    <>
-     
-
-      <UserButton
-        appearance={{
-          elements: {
-            avatarBox: "w-10 h-10",
-          },
-        }}
-      />
-    </>
-  )}
-
-</div>
+                <SignUpButton mode="modal">
+                  <MagneticButton className="btn btn-primary">
+                    Start free
+                    <ArrowIcon />
+                  </MagneticButton>
+                </SignUpButton>
+              </>
+            ) : (
+              <>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-10 h-10",
+                    },
+                  }}
+                />
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -372,32 +387,33 @@ export default function A1aiLanding() {
               <span className="dot" /> The Future Of AI Starts Here
             </span>
             <h1>
-               <em>One Workspace</em> 
+              <em>One Workspace</em>
               <br />
-              
- <span className="grad-text">Unlimited Intelligence.</span>.
+              <span className="grad-text">Unlimited Intelligence.</span>.
             </h1>
             <p className="hero-sub">
-              A1.ai brings AI smart chat, PDF analysis, and study notes into one place —
-              so you Stop switching between ChatGPT, Claude, Gemini, and dozens of AI tools. A1.ai brings everything into one beautiful workspace.
+              A1.ai brings AI smart chat, PDF analysis, and study notes into one
+              place — so you Stop switching between ChatGPT, Claude, Gemini, and
+              dozens of AI tools. A1.ai brings everything into one beautiful
+              workspace.
             </p>
             <div className="hero-actions">
               <SignUpButton mode="modal">
-  <MagneticButton className="btn btn-primary">
-    Start free
-    <ArrowIcon />
-  </MagneticButton>
-</SignUpButton>
-              <MagneticButton className="btn btn-outline btn-lg">
+                <MagneticButton className="btn btn-primary">
+                  Start free
+                  <ArrowIcon />
+                </MagneticButton>
+              </SignUpButton>
+              {/* <MagneticButton className="btn btn-outline btn-lg">
                 <PlayIcon /> Live demo
-              </MagneticButton>
+              </MagneticButton> */}
             </div>
             <div className="trust-row" ref={countRef}>
               <div className="trust-avatars">
-                <span style={{ background: '#FFC857' }}>JM</span>
-                <span style={{ background: '#8C7CF0' }}>RS</span>
-                <span style={{ background: '#FF8B7A' }}>TK</span>
-                <span style={{ background: '#54E8D6' }}>NV</span>
+                <span style={{ background: "#FFC857" }}>JM</span>
+                <span style={{ background: "#8C7CF0" }}>RS</span>
+                <span style={{ background: "#FF8B7A" }}>TK</span>
+                <span style={{ background: "#54E8D6" }}>NV</span>
               </div>
               <p>
                 <b>Launching Soon</b>
@@ -405,7 +421,11 @@ export default function A1aiLanding() {
             </div>
           </div>
 
-          <div className="doc-wrap" data-reveal style={{ transitionDelay: '120ms' }}>
+          <div
+            className="doc-wrap"
+            data-reveal
+            style={{ transitionDelay: "120ms" }}
+          >
             <div className="doc-glow" aria-hidden="true" />
             <div className="doc-card">
               <i className="hud hud-tl" />
@@ -424,11 +444,11 @@ export default function A1aiLanding() {
               </div>
 
               <div className="doc-lines">
-                <div className="doc-line" style={{ width: '92%' }} />
-                <div className="doc-line" style={{ width: '88%' }} />
-                <div className="doc-line highlight" style={{ width: '74%' }} />
-                <div className="doc-line" style={{ width: '95%' }} />
-                <div className="doc-line" style={{ width: '60%' }} />
+                <div className="doc-line" style={{ width: "92%" }} />
+                <div className="doc-line" style={{ width: "88%" }} />
+                <div className="doc-line highlight" style={{ width: "74%" }} />
+                <div className="doc-line" style={{ width: "95%" }} />
+                <div className="doc-line" style={{ width: "60%" }} />
               </div>
 
               <div className="annotation">
@@ -450,7 +470,16 @@ export default function A1aiLanding() {
           <div className="marquee-track">
             {[...Array(2)].map((_, dup) => (
               <div className="marquee-group" key={dup}>
-                {['MIT', 'Berkeley', 'UMich', 'Georgia Tech', 'UT Austin', 'UCLA', 'Waterloo', 'NYU'].map((u) => (
+                {[
+                  "MIT",
+                  "Berkeley",
+                  "UMich",
+                  "Georgia Tech",
+                  "UT Austin",
+                  "UCLA",
+                  "Waterloo",
+                  "NYU",
+                ].map((u) => (
                   <span key={u}>{u}</span>
                 ))}
               </div>
@@ -465,8 +494,9 @@ export default function A1aiLanding() {
             <div className="section-eyebrow">What's inside</div>
             <h2>Four tools. One tab.</h2>
             <p>
-              Each one is built around a real thing students and early-career developers get stuck on —
-              not a generic chatbot with a new coat of paint.
+              Each one is built around a real thing students and early-career
+              developers get stuck on — not a generic chatbot with a new coat of
+              paint.
             </p>
           </div>
           <div className="feature-grid">
@@ -485,7 +515,12 @@ export default function A1aiLanding() {
           </div>
           <div className="testi-grid">
             {TESTIMONIALS.map((t, i) => (
-              <div className="testi-card" data-reveal style={{ transitionDelay: `${i * 80}ms` }} key={t.name}>
+              <div
+                className="testi-card"
+                data-reveal
+                style={{ transitionDelay: `${i * 80}ms` }}
+                key={t.name}
+              >
                 <span className="quote-mark">“</span>
                 <p className="testi-quote">{t.quote}</p>
                 <div className="testi-person">
@@ -511,8 +546,16 @@ export default function A1aiLanding() {
         {FAQS.map((item, i) => {
           const open = openFaq === i;
           return (
-            <div className={`faq-item ${open ? 'open' : ''}`} key={item.q} data-reveal style={{ transitionDelay: `${i * 50}ms` }}>
-              <button className="faq-q" onClick={() => setOpenFaq(open ? -1 : i)}>
+            <div
+              className={`faq-item ${open ? "open" : ""}`}
+              key={item.q}
+              data-reveal
+              style={{ transitionDelay: `${i * 50}ms` }}
+            >
+              <button
+                className="faq-q"
+                onClick={() => setOpenFaq(open ? -1 : i)}
+              >
                 {item.q}
                 <span className="plus" />
               </button>
@@ -537,11 +580,11 @@ export default function A1aiLanding() {
           </h2>
           <p>Free to start. No credit card required.</p>
           <SignUpButton mode="modal">
-  <MagneticButton className="btn btn-primary">
-    Start free
-    <ArrowIcon />
-  </MagneticButton>
-</SignUpButton>
+            <MagneticButton className="btn btn-primary">
+              Start free
+              <ArrowIcon />
+            </MagneticButton>
+          </SignUpButton>
         </div>
       </section>
 
@@ -555,29 +598,48 @@ export default function A1aiLanding() {
                 </span>
                 A1.ai
               </div>
-              <p>An AI workspace for students and developers — chat, PDFs, resumes, and study notes, in one place.</p>
+              <p>
+                An AI workspace for students and developers — chat, PDFs,
+                resumes, and study notes, in one place.
+              </p>
             </div>
             <div className="footer-col">
               <h4>Product</h4>
               <ul>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#pricing">Pricing</a></li>
-                <li><a href="#">Live demo</a></li>
+                <li>
+                  <a href="#features">Features</a>
+                </li>
+                <li>
+                  <a href="#pricing">Pricing</a>
+                </li>
+                <li>
+                  <a href="#">Live demo</a>
+                </li>
               </ul>
             </div>
             <div className="footer-col">
               <h4>Company</h4>
               <ul>
-                <li><a href="#about">About</a></li>
-                <li><a href="#">Blog</a></li>
-                <li><a href="#">Contact</a></li>
+                <li>
+                  <a href="#about">About</a>
+                </li>
+                <li>
+                  <a href="#">Blog</a>
+                </li>
+                <li>
+                  <a href="#">Contact</a>
+                </li>
               </ul>
             </div>
             <div className="footer-col">
               <h4>Legal</h4>
               <ul>
-                <li><a href="#">Privacy</a></li>
-                <li><a href="#">Terms</a></li>
+                <li>
+                  <a href="#">Privacy</a>
+                </li>
+                <li>
+                  <a href="#">Terms</a>
+                </li>
               </ul>
             </div>
           </div>
@@ -597,7 +659,16 @@ export default function A1aiLanding() {
 
 function ArrowIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
@@ -611,7 +682,16 @@ function PlayIcon() {
 }
 function CheckIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M4 12l5 5L20 6" />
     </svg>
   );
