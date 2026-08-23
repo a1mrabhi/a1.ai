@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
 import {
   useEffect,
   useRef,
   useState,
-  ElementType,
   ReactNode,
   MouseEvent as ReactMouseEvent,
-} from 'react';
-import Link from 'next/link';
-import { UserButton, useUser } from '@clerk/nextjs';
+} from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 /**
  * A1.ai — post-login Dashboard
@@ -19,12 +19,19 @@ import { UserButton, useUser } from '@clerk/nextjs';
  *   Shares the exact design tokens, fonts and motion language as
  *   LandingPage.tsx so the transition after sign-in feels seamless.
  *   Plain React + CSS, no Tailwind, no framer-motion required.
+ *
+ *   v2: the header's search box has been replaced with a routed nav pill
+ *   (Dashboard / Smart Chat / Data Analyst). It occupies the exact same
+ *   slot and max-width the search box used to, uses next/link so clicking
+ *   a tab actually navigates, and — per feedback — uses a single unified
+ *   violet accent for all three tabs (no amber/cyan tint per-tab), so it
+ *   always reads like the calm "dashboard" state, never a colored alert.
  * -----------------------------------------------------------------------
  */
 
 interface LaunchCard {
   id: string;
-  accent: 'violet' | 'amber' | 'cyan';
+  accent: "violet" | "amber" | "cyan";
   eyebrow: string;
   title: string;
   desc: string;
@@ -35,25 +42,25 @@ interface LaunchCard {
 
 const LAUNCH_CARDS: LaunchCard[] = [
   {
-    id: 'chat',
-    accent: 'violet',
-    eyebrow: 'Talk it through',
-    title: 'AI Smart Chat',
-    desc: 'Ask anything in plain language and get answers grounded in your own notes and course material.',
-    cta: 'Open chat',
-    href: '/chat',
+    id: "chat",
+    accent: "violet",
+    eyebrow: "Talk it through",
+    title: "AI Smart Chat",
+    desc: "Ask anything in plain language and get answers grounded in your own notes and course material.",
+    cta: "Open chat",
+    href: "/chat",
     icon: (
       <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
     ),
   },
   {
-    id: 'pdf',
-    accent: 'amber',
-    eyebrow: 'Point at the page',
-    title: 'PDF Analyzer',
-    desc: 'Drop in a chapter or paper and ask it questions directly. Every answer points back to the exact page.',
-    cta: 'Analyze a PDF',
-    href: '/pdf',
+    id: "analyst",
+    accent: "amber",
+    eyebrow: "Explore your data",
+    title: "AI Data Analyst",
+    desc: "Upload CSV or Excel data and let AI discover patterns, trends, anomalies, and insights with evidence.",
+    cta: "Analyze data",
+    href: "/analyst",
     icon: (
       <>
         <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
@@ -61,18 +68,44 @@ const LAUNCH_CARDS: LaunchCard[] = [
       </>
     ),
   },
+];
+
+/* Nav pill tab config. Icons reuse the exact same paths as the launch
+   cards above so the icon language stays identical between the header
+   and the cards it links to — a person recognizes the chat icon twice. */
+const NAV_TABS = [
   {
-    id: 'study',
-    accent: 'cyan',
-    eyebrow: 'Practice on repeat',
-    title: 'Study Assistant',
-    desc: "Turn slides or readings into structured notes and practice questions, sorted by what you're weakest on.",
-    cta: 'Start studying',
-    href: '/study',
+    id: "dashboard",
+    label: "Dashboard",
+    href: "/dashboard",
+    exact: true,
     icon: (
       <>
-        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H12v16H6.5A2.5 2.5 0 0 1 4 17.5v-11Z" />
-        <path d="M20 6.5A2.5 2.5 0 0 0 17.5 4H12v16h5.5a2.5 2.5 0 0 0 2.5-2.5v-11Z" />
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      </>
+    ),
+  },
+  {
+    id: "chat",
+    label: "AISmart Chat",
+    href: "/chat",
+    exact: false,
+    icon: (
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
+    ),
+  },
+  {
+    id: "analyst",
+    label: "AI Data Analyst",
+    href: "/analyst",
+    exact: false,
+    icon: (
+      <>
+        <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+        <path d="M14 3v5h5" />
       </>
     ),
   },
@@ -80,11 +113,10 @@ const LAUNCH_CARDS: LaunchCard[] = [
 
 interface WorkspaceStats {
   chats: number;
-  pdfs: number;
-  studyNotes: number;
+  datasets: number;
 }
 
-const EMPTY_STATS: WorkspaceStats = { chats: 0, pdfs: 0, studyNotes: 0 };
+const EMPTY_STATS: WorkspaceStats = { chats: 0, datasets: 0 };
 
 /* ------------------------------------------------------------------ */
 /* Hooks                                                               */
@@ -92,17 +124,17 @@ const EMPTY_STATS: WorkspaceStats = { chats: 0, pdfs: 0, studyNotes: 0 };
 
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('[data-reveal]');
+    const els = document.querySelectorAll("[data-reveal]");
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) {
-            e.target.classList.add('is-in');
+            e.target.classList.add("is-in");
             io.unobserve(e.target);
           }
         });
       },
-      { threshold: 0.16, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.16, rootMargin: "0px 0px -40px 0px" },
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
@@ -110,28 +142,28 @@ function useReveal() {
 }
 
 function useGreeting(name?: string | null) {
-  const [state, setState] = useState({ text: 'Good day', period: 'day' });
+  const [state, setState] = useState({ text: "Good day", period: "day" });
   useEffect(() => {
     const h = new Date().getHours();
-    if (h < 5) setState({ text: 'Still up', period: 'night' });
-    else if (h < 12) setState({ text: 'Good morning', period: 'morning' });
-    else if (h < 17) setState({ text: 'Good afternoon', period: 'afternoon' });
-    else if (h < 21) setState({ text: 'Good evening', period: 'evening' });
-    else setState({ text: 'Good night', period: 'night' });
+    if (h < 5) setState({ text: "Still up", period: "night" });
+    else if (h < 12) setState({ text: "Good morning", period: "morning" });
+    else if (h < 17) setState({ text: "Good afternoon", period: "afternoon" });
+    else if (h < 21) setState({ text: "Good evening", period: "evening" });
+    else setState({ text: "Good night", period: "night" });
   }, []);
-  const who = name ? `, ${name}` : '';
+  const who = name ? `, ${name}` : "";
   return { line: `${state.text}${who}`, period: state.period };
 }
 
 function useClock() {
-  const [time, setTime] = useState('');
+  const [time, setTime] = useState("");
   useEffect(() => {
     const tick = () =>
       setTime(
-        new Date().toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+        new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       );
     tick();
     const id = setInterval(tick, 30000);
@@ -151,16 +183,17 @@ function useWorkspaceStats() {
     try {
       // Replace with your real endpoint — this intentionally has no
       // fallback fake data. If the request fails, we surface zeros.
-      const res = await fetch('/api/workspace/stats', { cache: 'no-store' });
+      const res = await fetch("/api/workspace/stats", { cache: "no-store" });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const data = await res.json();
       setStats({
         chats: Number(data?.chats) || 0,
-        pdfs: Number(data?.pdfs) || 0,
-        studyNotes: Number(data?.studyNotes) || 0,
+        datasets: Number(data?.datasets) || 0,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load workspace stats');
+      setError(
+        err instanceof Error ? err.message : "Could not load workspace stats",
+      );
       setStats(EMPTY_STATS);
     } finally {
       setLoading(false);
@@ -182,47 +215,120 @@ function useWorkspaceStats() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Interactive bits                                                     */
+/* Nav pill — replaces the old search box, same slot & max-width       */
 /* ------------------------------------------------------------------ */
 
-interface MagneticButtonProps {
-  as?: ElementType;
-  className?: string;
-  children?: ReactNode;
-  [key: string]: any;
-}
+function NavPill({ stats, loading }: { stats: WorkspaceStats; loading: boolean }) {
+  const pathname = usePathname();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const [indicator, setIndicator] = useState({ x: 0, width: 0, ready: false });
 
-function MagneticButton({ as: As = 'a', className = '', children, ...props }: MagneticButtonProps) {
-  const ref = useRef<HTMLElement | null>(null);
-  const onMove = (e: ReactMouseEvent<HTMLElement>) => {
-    const el = ref.current;
-    if (!el) return;
+  const activeIndex = (() => {
+    const i = NAV_TABS.findIndex((t) =>
+      t.exact ? pathname === t.href : pathname?.startsWith(t.href),
+    );
+    return i === -1 ? 0 : i;
+  })();
+
+  const measure = () => {
+    const el = itemRefs.current[activeIndex];
+    const container = containerRef.current;
+    if (!el || !container) return;
+    const cRect = container.getBoundingClientRect();
     const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left - r.width / 2) * 0.18;
-    const y = (e.clientY - r.top - r.height / 2) * 0.26;
-    el.style.transform = `translate(${x}px, ${y}px)`;
+    setIndicator({ x: r.left - cRect.left, width: r.width, ready: true });
   };
-  const onLeave = () => {
-    if (ref.current) ref.current.style.transform = 'translate(0,0)';
-  };
+
+  useEffect(() => {
+    measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
+
+  useEffect(() => {
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
+
   return (
-    <As ref={ref} className={`magnetic ${className}`} onMouseMove={onMove} onMouseLeave={onLeave} {...props}>
-      {children}
-    </As>
+    <nav className="nav-outer" aria-label="Primary">
+      <div className="nav-pill" ref={containerRef}>
+        <div
+          className="indicator"
+          style={{
+            transform: `translateX(${indicator.x}px)`,
+            width: `${indicator.width}px`,
+            opacity: indicator.ready ? 1 : 0,
+          }}
+        />
+        {NAV_TABS.map((tab, i) => {
+          const isActive = i === activeIndex;
+          const statValue =
+            tab.id === "chat" ? stats.chats : tab.id === "analyst" ? stats.datasets : null;
+          return (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              className={`nav-item ${isActive ? "active" : ""}`}
+            >
+              <svg
+                className="ic"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                {tab.icon}
+              </svg>
+              {tab.label}
+              {statValue !== null && (
+                <span className={`label-count ${isActive ? "show" : ""}`}>
+                  {loading ? "…" : statValue}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
-function LaunchCardView({ card, index }: { card: LaunchCard; index: number }) {
+/* ------------------------------------------------------------------ */
+/* Interactive bits                                                     */
+/* ------------------------------------------------------------------ */
+
+function LaunchCardView({
+  card,
+  index,
+  statValue,
+  statLabel,
+  statLoading,
+}: {
+  card: LaunchCard;
+  index: number;
+  statValue: number;
+  statLabel: string;
+  statLoading: boolean;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const onMove = (e: ReactMouseEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
-    el.style.setProperty('--my', `${e.clientY - r.top}px`);
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--my", `${e.clientY - r.top}px`);
   };
   return (
-    <Link href={card.href} style={{ textDecoration: 'none', color: 'inherit' }}>
+    <Link href={card.href} style={{ textDecoration: "none", color: "inherit" }}>
+      <div className={`launch-ring ${card.accent === "amber" ? "ring-amber" : "ring-violet"}`}>
+      <div className="launch-ring-clip" aria-hidden="true">
+        <div className="launch-ring-spin" />
+      </div>
       <div
         ref={ref}
         onMouseMove={onMove}
@@ -231,52 +337,49 @@ function LaunchCardView({ card, index }: { card: LaunchCard; index: number }) {
         style={{ transitionDelay: `${index * 90}ms` }}
       >
         <div className="launch-spot" />
+        <div className="launch-deco" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.2"
+          >
+            {card.icon}
+          </svg>
+        </div>
+
         <div className="launch-top">
           <div className="launch-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               {card.icon}
             </svg>
           </div>
           <span className="launch-eyebrow">{card.eyebrow}</span>
         </div>
+
         <h3>{card.title}</h3>
         <p>{card.desc}</p>
-        <div className="launch-cta">
-          {card.cta} <ArrowIcon />
+
+        <div className="launch-bottom">
+          <div className="launch-cta">
+            {card.cta} <ArrowIcon />
+          </div>
+          <span className={`launch-stat ${statLoading ? "is-loading" : ""}`}>
+            {statLoading ? "Syncing…" : `${statValue} ${statLabel}`}
+          </span>
         </div>
+
         <div className="launch-corner" />
       </div>
-    </Link>
-  );
-}
-
-interface WorkspaceRowProps {
-  accent: 'violet' | 'amber' | 'cyan';
-  icon: ReactNode;
-  label: string;
-  value: number;
-  unit: string;
-  loading: boolean;
-  index: number;
-}
-
-function WorkspaceRow({ accent, icon, label, value, unit, loading, index }: WorkspaceRowProps) {
-  return (
-    <div
-      className={`workspace-row accent-${accent}`}
-      data-reveal
-      style={{ transitionDelay: `${index * 70}ms` }}
-    >
-      <div className="workspace-row-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          {icon}
-        </svg>
       </div>
-      <p className="workspace-row-label">{label}</p>
-      <p className={`workspace-row-value ${loading ? 'is-loading' : ''}`}>
-        {loading ? 'Syncing…' : `${value} ${unit}`}
-      </p>
-    </div>
+    </Link>
   );
 }
 
@@ -286,86 +389,20 @@ function WorkspaceRow({ accent, icon, label, value, unit, loading, index }: Work
 
 function ArrowIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
-function RefreshIcon({ spinning = false }: { spinning?: boolean }) {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={spinning ? 'spin' : ''}
-    >
-      <path d="M3.5 12a8.5 8.5 0 0 1 14.5-6M20.5 12a8.5 8.5 0 0 1-14.5 6" />
-      <path d="M18 3v4h-4M6 21v-4h4" />
-    </svg>
-  );
-}
-function CheckedIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 12l5 5L20 6" />
-    </svg>
-  );
-}
-function CopyIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="9" width="12" height="12" rx="2.5" />
-      <path d="M5 15V5.5A2.5 2.5 0 0 1 7.5 3H15" />
-    </svg>
-  );
-}
-function SearchIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.2-3.2" />
-    </svg>
-  );
-}
-function BellIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 8a6 6 0 0 1 12 0c0 4.5 1.5 6 2 6.5H4c.5-.5 2-2 2-6.5Z" />
-      <path d="M10 19a2 2 0 0 0 4 0" />
-    </svg>
-  );
-}
-function SparkleIcon({ size = 34 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-/* Icon paths reused across the launch cards and the workspace panel,
-   so the two sections stay visually consistent. */
-const CHAT_ICON_PATH = (
-  <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
-);
-const PDF_ICON_PATH = (
-  <>
-    <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-    <path d="M14 3v5h5" />
-  </>
-);
-const STUDY_ICON_PATH = (
-  <>
-    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H12v16H6.5A2.5 2.5 0 0 1 4 17.5v-11Z" />
-    <path d="M20 6.5A2.5 2.5 0 0 0 17.5 4H12v16h5.5a2.5 2.5 0 0 0 2.5-2.5v-11Z" />
-  </>
-);
-
 /* ------------------------------------------------------------------ */
 /* Main component                                                       */
 /* ------------------------------------------------------------------ */
@@ -375,21 +412,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const { line: greeting } = useGreeting(user?.firstName);
   const clock = useClock();
-  const [query, setQuery] = useState('');
-  const { stats, loading, error, refresh } = useWorkspaceStats();
-  const [copied, setCopied] = useState(false);
-  const isEmpty = !loading && stats.chats === 0 && stats.pdfs === 0 && stats.studyNotes === 0;
-
-  const handleCopy = async () => {
-    const summary = `Your Workspace — ${stats.chats} chats · ${stats.pdfs} PDFs · ${stats.studyNotes} study notes`;
-    try {
-      await navigator.clipboard.writeText(summary);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard access can fail (permissions, insecure context) — fail silently.
-    }
-  };
+  const { stats, loading } = useWorkspaceStats();
 
   return (
     <>
@@ -406,23 +429,10 @@ export default function DashboardPage() {
             A1.ai
           </Link>
 
-          <div className="search-wrap">
-            <SearchIcon />
-            <input
-              className="search-input"
-              placeholder="Search chats, PDFs, sessions…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <span className="search-kbd">⌘K</span>
-          </div>
+          <NavPill stats={stats} loading={loading} />
 
           <div className="nav-actions">
-            <button className="icon-btn" aria-label="Notifications">
-              <BellIcon />
-              <span className="notif-dot" />
-            </button>
-            <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }} />
+            <UserButton appearance={{ elements: { avatarBox: "w-9 h-9" } }} />
           </div>
         </div>
       </header>
@@ -438,106 +448,64 @@ export default function DashboardPage() {
 
           <div className="container greet-inner">
             <span className="eyebrow eyebrow-enter">
-              <span className="dot" /> {clock || '—:—'} local time · workspace synced
+              <span className="dot" /> {clock || "—:—"} local time · workspace
+              synced
             </span>
             <h1 className="greet-enter">
               {greeting}
               <span className="grad-text">.</span>
             </h1>
             <p className="greet-sub greet-enter-2">
-              What are we working on<span className="caret" />
+              What are we working on
+              <span className="caret" />
             </p>
           </div>
         </section>
 
         <section className="launch">
-          <div className="container">
-            <div className="launch-grid">
-              {LAUNCH_CARDS.map((c, i) => (
-                <LaunchCardView key={c.id} card={c} index={i} />
-              ))}
+          {/* Ambient background dressing — beams, particles, corner tags */}
+          <div className="launch-ambient" aria-hidden="true">
+            <div className="launch-grid-floor" />
+            <span className="launch-blob lb-l" />
+            <span className="launch-blob lb-r" />
+
+            <span className="beam beam-l" />
+            <span className="beam beam-r" />
+
+            <span className="particle p1" />
+            <span className="particle p2" />
+            <span className="particle p3" />
+            <span className="particle p4" />
+            <span className="particle p5" />
+
+            <div className="launch-tag tag-l">
+              <span className="tag-dot" />
+              WORKSPACE ACTIVE
+            </div>
+            <div className="launch-tag tag-r">
+              02 MODULES ONLINE
+              <span className="tag-dot" />
             </div>
           </div>
-        </section>
 
-        <section className="recent">
           <div className="container">
-            <div className="recent-head" data-reveal>
-              <div>
-                <span className="section-eyebrow">Workspace</span>
-                <h2>Your workspace</h2>
-              </div>
-              {error && <span className="workspace-error">Couldn't sync — showing last known state</span>}
-            </div>
-
-            <div className="workspace-card" data-reveal>
-              <div className="workspace-glow" aria-hidden="true" />
-
-              <div className="workspace-top">
-                <span className="workspace-title">Your Workspace</span>
-                <div className="workspace-actions">
-                  <button
-                    className="icon-btn workspace-action"
-                    aria-label="Refresh workspace stats"
-                    onClick={() => refresh()}
-                    disabled={loading}
-                  >
-                    <RefreshIcon spinning={loading} />
-                  </button>
-                  <button
-                    className="icon-btn workspace-action"
-                    aria-label="Copy workspace summary"
-                    onClick={handleCopy}
-                  >
-                    {copied ? <CheckedIcon /> : <CopyIcon />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="workspace-list">
-                <WorkspaceRow
-                  accent="violet"
-                  icon={CHAT_ICON_PATH}
-                  label="AI Chats"
-                  value={stats.chats}
-                  unit="Chats"
-                  loading={loading}
-                  index={0}
-                />
-                <WorkspaceRow
-                  accent="amber"
-                  icon={PDF_ICON_PATH}
-                  label="PDFs"
-                  value={stats.pdfs}
-                  unit="Uploaded"
-                  loading={loading}
-                  index={1}
-                />
-                <WorkspaceRow
-                  accent="cyan"
-                  icon={STUDY_ICON_PATH}
-                  label="Study Notes"
-                  value={stats.studyNotes}
-                  unit="Generated"
-                  loading={loading}
-                  index={2}
-                />
-              </div>
-
-              {isEmpty && (
-                <div className="workspace-empty">
-                  <div className="workspace-empty-icon">
-                    <SparkleIcon size={20} />
-                  </div>
-                  <p>
-                    Nothing here yet — chat, analyze a PDF, or run a study session and it'll show up
-                    in your workspace.
-                  </p>
-                  <MagneticButton as={Link} href="/chat" className="btn btn-primary btn-sm">
-                    Start your first session <ArrowIcon />
-                  </MagneticButton>
-                </div>
-              )}
+            <div className="launch-grid">
+              {LAUNCH_CARDS.map((c, i) => {
+                const statValue =
+                  c.id === "chat" ? stats.chats : stats.datasets;
+                const statLabel =
+                  c.id === "chat" ? "chats" : "datasets analyzed";
+                return (
+                  <LaunchCardView
+                    key={c.id}
+                    card={c}
+                    index={i}
+                    statValue={statValue}
+                    statLabel={statLabel}
+                    statLoading={loading}
+                  />
+                );
+              })}
             </div>
           </div>
         </section>
@@ -597,26 +565,47 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 .mark-core{ position:absolute; inset:2px; border-radius:5px; background:var(--bg); }
 @keyframes markSpin{ to{ transform:rotate(360deg);} }
 
-.search-wrap{
-  flex:1; max-width:420px; display:flex; align-items:center; gap:10px; background:var(--surface);
-  border:1px solid var(--border); border-radius:10px; padding:9px 14px; color:var(--text-tertiary);
-  transition:border-color .2s ease, box-shadow .2s ease; margin:0 auto;
+/* ---------- Nav pill (replaces the old search box, same slot/width) ---------- */
+.nav-outer{
+  flex:1; max-width:420px; margin:0 auto;
+  padding:1px; border-radius:13px;
+  background:conic-gradient(from var(--rot,0deg), rgba(140,124,240,.42), rgba(84,232,214,.24), rgba(140,124,240,.42));
+  animation:rotateBorder 9s linear infinite;
 }
-.search-wrap:focus-within{ border-color:var(--border-hover); box-shadow:0 0 0 3px var(--violet-dim); color:var(--text-secondary); }
-.search-input{ flex:1; background:none; border:none; outline:none; color:var(--text-primary); font-family:var(--font-body); font-size:13.5px; }
-.search-input::placeholder{ color:var(--text-tertiary); }
-.search-kbd{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-tertiary); border:1px solid var(--border); border-radius:5px; padding:2px 6px; flex-shrink:0; }
+@keyframes rotateBorder{ to{ --rot:360deg; } }
+@property --rot{ syntax:'<angle>'; inherits:true; initial-value:0deg; }
+
+.nav-pill{
+  position:relative; display:flex; align-items:center; gap:4px;
+  background:rgba(10,13,24,0.94); border-radius:13px; padding:7px;
+}
+.indicator{
+  position:absolute; top:7px; left:0; height:calc(100% - 14px);
+  background:linear-gradient(155deg, rgba(255,255,255,.055), rgba(255,255,255,.012));
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), inset 0 -1px 0 rgba(0,0,0,.22);
+  transition:transform .4s cubic-bezier(.16,1,.3,1), width .4s cubic-bezier(.16,1,.3,1), opacity .25s ease;
+  pointer-events:none;
+}
+.nav-item{
+  position:relative; z-index:1; display:flex; align-items:center; gap:6px;
+  font-family:var(--font-body); font-weight:500; font-size:12.5px; white-space:nowrap;
+  color:var(--text-tertiary); padding:8px 12px; border-radius:8px; cursor:pointer;
+  text-decoration:none; transition:color .25s ease;
+}
+.nav-item .ic{ width:14px; height:14px; flex-shrink:0; }
+.nav-item.active{ color:var(--text-primary); }
+.nav-item:not(.active):hover{ color:var(--text-secondary); }
+.nav-item:active{ transform:scale(.97); }
+.label-count{
+  font-family:var(--font-mono); font-size:9.5px; color:var(--violet);
+  background:rgba(140,124,240,.14); border-radius:5px; padding:1px 5px;
+  opacity:0; transform:translateY(2px); transition:opacity .25s ease, transform .25s ease;
+}
+.label-count.show{ opacity:1; transform:translateY(0); }
 
 .nav-actions{ display:flex; align-items:center; gap:14px; flex-shrink:0; }
-.icon-btn{
-  position:relative; width:38px; height:38px; border-radius:10px; background:var(--surface); border:1px solid var(--border);
-  color:var(--text-secondary); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:border-color .2s ease, color .2s ease;
-}
-.icon-btn:hover{ border-color:var(--border-hover); color:var(--text-primary); }
-.notif-dot{
-  position:absolute; top:8px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--cyan);
-  box-shadow:0 0 0 0 rgba(84,232,214,.6); animation:pulseDot 2s ease-out infinite;
-}
 @keyframes pulseDot{ 0%{ box-shadow:0 0 0 0 rgba(84,232,214,.55);} 70%{ box-shadow:0 0 0 8px rgba(84,232,214,0);} 100%{ box-shadow:0 0 0 0 rgba(84,232,214,0);} }
 
 /* ---------- Buttons / magnetic ---------- */
@@ -662,118 +651,176 @@ h1{ font-family:var(--font-display); font-weight:600; font-size:clamp(32px,4.4vw
 @keyframes riseIn{ to{ opacity:1; transform:translateY(0);} }
 
 /* ---------- Launch cards ---------- */
-.launch{ padding:36px 0 88px; position:relative; z-index:1; }
-.launch-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.launch{ padding:36px 0 88px; position:relative; z-index:1; overflow:hidden; }
+
+/* Ambient full-bleed dressing that carries the aurora down past the greeting
+   section so the void either side of the cards isn't flat black. */
+.launch-ambient{ position:absolute; inset:0; z-index:0; pointer-events:none; }
+.launch-grid-floor{
+  position:absolute; inset:-40% 0 0 0;
+  background-image:linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 30%, black 0%, transparent 72%);
+  opacity:.3;
+}
+.launch-blob{ position:absolute; border-radius:50%; filter:blur(110px); opacity:.18; animation:blobFloat 18s ease-in-out infinite; }
+.lb-l{ width:360px; height:360px; background:var(--violet); top:8%; left:-10%; animation-delay:-3s; }
+.lb-r{ width:320px; height:320px; background:var(--amber); bottom:-8%; right:-8%; opacity:.14; animation-delay:-9s; }
+
+/* Soft vertical light beams standing in the gutters — no shape to read as
+   "broken", just glow, like light falling through a gap. */
+.beam{
+  position:absolute; top:6%; bottom:6%; width:1px;
+  background:linear-gradient(to bottom, transparent, var(--violet) 45%, var(--cyan) 55%, transparent);
+  opacity:.22; filter:blur(1px);
+  animation:beamPulse 5s ease-in-out infinite;
+}
+.beam::before{
+  content:''; position:absolute; inset:-1px -22px;
+  background:inherit; filter:blur(26px); opacity:.7;
+}
+.beam-l{ left:44px; }
+.beam-r{ right:44px; animation-delay:-2.4s; }
+@keyframes beamPulse{ 0%,100%{ opacity:.14; transform:scaleY(.94);} 50%{ opacity:.32; transform:scaleY(1);} }
+
+/* Slow drifting particles for depth */
+.particle{
+  position:absolute; width:3px; height:3px; border-radius:50%; background:var(--cyan);
+  box-shadow:0 0 8px 1px rgba(84,232,214,.5); opacity:0;
+  animation:particleDrift 9s ease-in-out infinite;
+}
+.p1{ left:5%; top:20%; animation-delay:0s; background:var(--violet); box-shadow:0 0 8px 1px rgba(140,124,240,.5); }
+.p2{ left:9%; top:70%; animation-delay:-2s; }
+.p3{ right:6%; top:30%; animation-delay:-4.5s; background:var(--amber); box-shadow:0 0 8px 1px rgba(255,200,87,.5); }
+.p4{ right:11%; top:78%; animation-delay:-1.2s; }
+.p5{ left:2.5%; top:48%; animation-delay:-6s; background:var(--amber); box-shadow:0 0 8px 1px rgba(255,200,87,.5); }
+@keyframes particleDrift{
+  0%{ opacity:0; transform:translateY(10px); }
+  15%{ opacity:.7; }
+  50%{ opacity:.45; transform:translateY(-16px); }
+  85%{ opacity:.7; }
+  100%{ opacity:0; transform:translateY(-30px); }
+}
+
+/* Small static tags anchoring the gutters, same eyebrow language as the
+   greeting badge, so the empty space feels like part of the UI system. */
+.launch-tag{
+  position:absolute; bottom:8%; display:flex; align-items:center; gap:8px;
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.1em; color:var(--text-tertiary);
+  white-space:nowrap;
+}
+.tag-l{ left:24px; }
+.tag-r{ right:24px; }
+.tag-dot{ width:5px; height:5px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 0 rgba(84,232,214,.6); animation:pulseDot 2.2s ease-out infinite; flex-shrink:0; }
+
+@media (max-width:1300px){
+  .beam, .particle, .launch-tag{ display:none; }
+}
+
+.launch-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:24px; max-width:1040px; margin:0 auto; position:relative; z-index:1; }
+
+/* Rotating premium ring — a genuinely-rotating conic-gradient (real
+   transform:rotate, always animates) that is masked with content-box
+   exclusion so it can ONLY ever paint a thin 2px band around the card —
+   the interior is cut out at the source, not just visually covered.
+   This matters because the card's own background is a faint translucent
+   tint, not opaque, so covering wouldn't be enough on its own. The mask
+   + overflow:hidden live entirely on this frame element, a sibling of
+   .launch-card (not an ancestor), so the card and its hover shadow are
+   completely untouched. */
+.launch-ring{ position:relative; border-radius:22px; }
+.launch-ring-clip{
+  position:absolute; inset:-2px; border-radius:22px; padding:2px; overflow:hidden; z-index:0; pointer-events:none;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite:exclude;
+}
+.launch-ring-spin{
+  position:absolute; inset:-75%;
+  background:conic-gradient(from 0deg,
+    rgba(140,124,240,0) 0deg,
+    rgba(140,124,240,.95) 25deg,
+    rgba(84,232,214,.55) 70deg,
+    rgba(140,124,240,0) 130deg,
+    rgba(140,124,240,0) 230deg,
+    rgba(84,232,214,.4) 300deg,
+    rgba(140,124,240,.95) 335deg,
+    rgba(140,124,240,0) 360deg
+  );
+  animation:ringSpin 7s linear infinite;
+}
+.launch-ring.ring-amber .launch-ring-spin{
+  background:conic-gradient(from 0deg,
+    rgba(255,200,87,0) 0deg,
+    rgba(255,200,87,.95) 25deg,
+    rgba(140,124,240,.45) 70deg,
+    rgba(255,200,87,0) 130deg,
+    rgba(255,200,87,0) 230deg,
+    rgba(140,124,240,.35) 300deg,
+    rgba(255,200,87,.95) 335deg,
+    rgba(255,200,87,0) 360deg
+  );
+}
+@keyframes ringSpin{ to{ transform:rotate(360deg); } }
+
 .launch-card{
-  position:relative; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:30px 28px 26px;
+  position:relative; z-index:1; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:38px 36px 30px;
+  min-height:270px; display:flex; flex-direction:column;
   transition:border-color .25s ease, transform .25s ease, box-shadow .25s ease; overflow:hidden; cursor:pointer;
   opacity:0; transform:translateY(18px);
 }
 [data-reveal].is-in.launch-card, .launch-card.is-in{ opacity:1; transform:translateY(0); }
 .launch-card[data-reveal]{ transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1), border-color .25s ease, box-shadow .25s ease; }
 .launch-card[data-reveal].is-in{ opacity:1; transform:translateY(0); }
-.launch-card:hover{ transform:translateY(-6px); border-color:var(--border-hover); box-shadow:0 24px 48px -24px rgba(140,124,240,.35); }
+.launch-card:hover{ transform:translateY(-6px); border-color:var(--border-hover); box-shadow:0 28px 56px -26px rgba(140,124,240,.4); }
 .launch-spot{
   position:absolute; inset:0; opacity:0; transition:opacity .3s ease; pointer-events:none;
-  background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(140,124,240,.16), transparent 70%);
+  background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%), rgba(140,124,240,.16), transparent 70%);
 }
-.accent-amber .launch-spot{ background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(255,200,87,.16), transparent 70%); }
-.accent-cyan .launch-spot{ background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(84,232,214,.16), transparent 70%); }
+.accent-amber .launch-spot{ background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%), rgba(255,200,87,.16), transparent 70%); }
+.accent-cyan .launch-spot{ background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%), rgba(84,232,214,.16), transparent 70%); }
 .launch-card:hover .launch-spot{ opacity:1; }
-.launch-corner{ position:absolute; top:16px; right:16px; width:6px; height:6px; border-radius:50%; background:var(--border-hover); opacity:0; transition:opacity .25s ease; }
+.launch-deco{
+  position:absolute; top:-30px; right:-30px; width:190px; height:190px; opacity:.05; pointer-events:none;
+  transition:opacity .3s ease, transform .4s ease;
+}
+.launch-deco svg{ width:100%; height:100%; }
+.accent-violet .launch-deco{ color:var(--violet); }
+.accent-amber .launch-deco{ color:var(--amber); }
+.accent-cyan .launch-deco{ color:var(--cyan); }
+.launch-card:hover .launch-deco{ opacity:.09; transform:scale(1.06) rotate(4deg); }
+.launch-corner{ position:absolute; top:18px; right:18px; width:6px; height:6px; border-radius:50%; background:var(--border-hover); opacity:0; transition:opacity .25s ease; }
 .launch-card:hover .launch-corner{ opacity:1; box-shadow:0 0 10px 2px rgba(140,124,240,.6); }
-.launch-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; position:relative; z-index:1; }
-.launch-icon{ width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; transition:transform .25s ease; }
+.launch-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; position:relative; z-index:1; }
+.launch-icon{ width:54px; height:54px; border-radius:14px; display:flex; align-items:center; justify-content:center; transition:transform .25s ease; }
 .launch-card:hover .launch-icon{ transform:scale(1.08) rotate(-4deg); }
-.launch-icon svg{ width:21px; height:21px; }
+.launch-icon svg{ width:24px; height:24px; }
 .accent-violet .launch-icon{ background:var(--violet-dim); color:var(--violet); }
 .accent-amber .launch-icon{ background:var(--amber-dim); color:var(--amber); }
 .accent-cyan .launch-icon{ background:var(--cyan-dim); color:var(--cyan); }
-.launch-eyebrow{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary); }
-.launch-card h3{ font-family:var(--font-display); font-weight:600; font-size:19px; margin-bottom:10px; position:relative; z-index:1; }
-.launch-card p{ font-size:13.5px; color:var(--text-secondary); line-height:1.6; position:relative; z-index:1; margin-bottom:22px; min-height:64px; }
+.launch-eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--text-tertiary); }
+.launch-card h3{ font-family:var(--font-display); font-weight:600; font-size:23px; margin-bottom:12px; position:relative; z-index:1; }
+.launch-card p{ font-size:14.5px; color:var(--text-secondary); line-height:1.65; position:relative; z-index:1; margin-bottom:auto; padding-bottom:26px; }
+.launch-bottom{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; position:relative; z-index:1;
+  padding-top:18px; border-top:1px solid var(--border);
+}
 .launch-cta{
-  display:inline-flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:12px; letter-spacing:.03em;
-  color:var(--text-primary); position:relative; z-index:1; transition:gap .2s ease;
+  display:inline-flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:12.5px; letter-spacing:.03em;
+  color:var(--text-primary); transition:gap .2s ease;
 }
 .accent-violet .launch-cta{ color:var(--violet); }
 .accent-amber .launch-cta{ color:var(--amber); }
 .accent-cyan .launch-cta{ color:var(--cyan); }
 .launch-card:hover .launch-cta{ gap:11px; }
-
-/* ---------- Recent activity ---------- */
-.recent{ padding:0 0 100px; position:relative; z-index:1; }
-.recent-head{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:26px; opacity:0; transform:translateY(14px); transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1); }
-.recent-head.is-in{ opacity:1; transform:translateY(0); }
-.section-eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); display:block; margin-bottom:8px; }
-.recent-head h2{ font-family:var(--font-display); font-weight:600; font-size:26px; }
-.workspace-error{ font-family:var(--font-mono); font-size:11.5px; color:var(--coral); }
-
-/* ---------- Workspace card (premium) ---------- */
-.workspace-card{
-  position:relative; max-width:680px; margin:0 auto; overflow:hidden;
-  background:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
-  border:1px solid var(--border); border-radius:22px; padding:28px 26px 24px;
-  box-shadow:0 30px 60px -32px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.04);
-  opacity:0; transform:translateY(16px);
-}
-.workspace-card[data-reveal]{ transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1), border-color .25s ease; }
-.workspace-card[data-reveal].is-in{ opacity:1; transform:translateY(0); }
-.workspace-card:hover{ border-color:var(--border-hover); }
-.workspace-glow{
-  position:absolute; top:-60%; left:50%; width:340px; height:220px; transform:translateX(-50%);
-  background:radial-gradient(ellipse at center, rgba(140,124,240,.22), transparent 70%);
-  pointer-events:none; z-index:0;
-}
-.workspace-top{ position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
-.workspace-title{ font-family:var(--font-display); font-weight:600; font-size:18px; letter-spacing:-.01em; }
-.workspace-actions{ display:flex; align-items:center; gap:8px; }
-.workspace-action{ width:32px; height:32px; }
-.workspace-action:disabled{ opacity:.5; cursor:default; }
-.spin{ animation:spin .8s linear infinite; }
-@keyframes spin{ to{ transform:rotate(360deg);} }
-
-.workspace-list{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-.workspace-row{
-  display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:20px 18px;
-  background:var(--surface); border:1px solid var(--border); border-radius:14px;
-  transition:background .2s ease, transform .2s ease, border-color .2s ease;
-  opacity:0; transform:translateY(10px);
-}
-.workspace-row[data-reveal]{ transition:opacity .55s cubic-bezier(.16,1,.3,1), transform .55s cubic-bezier(.16,1,.3,1), background .2s ease, border-color .2s ease; }
-.workspace-row[data-reveal].is-in{ opacity:1; transform:translateY(0); }
-.workspace-row:hover{ background:rgba(255,255,255,0.055); border-color:var(--border-hover); transform:translateY(-3px); }
-.workspace-row-icon{
-  width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
-  transition:transform .2s ease;
-}
-.workspace-row-icon svg{ width:18px; height:18px; }
-.workspace-row:hover .workspace-row-icon{ transform:scale(1.06) rotate(-3deg); }
-.accent-violet .workspace-row-icon{ background:var(--violet-dim); color:var(--violet); }
-.accent-amber .workspace-row-icon{ background:var(--amber-dim); color:var(--amber); }
-.accent-cyan .workspace-row-icon{ background:var(--cyan-dim); color:var(--cyan); }
-.workspace-row-label{ font-size:14px; font-weight:600; color:var(--text-primary); }
-.workspace-row-value{ font-size:12px; font-family:var(--font-mono); color:var(--text-tertiary); transition:opacity .2s ease; }
-.workspace-row-value.is-loading{ opacity:.6; }
-
-.workspace-empty{
-  position:relative; z-index:1; text-align:center; margin-top:18px; padding:22px 18px 6px;
-  border-top:1px solid var(--border);
-}
-.workspace-empty-icon{
-  width:38px; height:38px; border-radius:50%; margin:14px auto 14px; display:flex; align-items:center; justify-content:center;
-  background:var(--violet-dim); color:var(--violet); animation:emptyFloat 3.4s ease-in-out infinite;
-}
-@keyframes emptyFloat{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
-.workspace-empty p{ font-size:13px; color:var(--text-secondary); line-height:1.6; margin-bottom:18px; }
-.btn-sm{ font-size:13px; padding:10px 16px; }
+.launch-stat{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-tertiary); transition:opacity .2s ease; }
+.launch-stat.is-loading{ opacity:.6; }
 
 /* ---------- Responsive ---------- */
 @media (max-width:900px){
-  .search-wrap{ display:none; }
+  .nav-outer{ display:none; }
   .launch-grid{ grid-template-columns:1fr; }
-  .workspace-card{ padding:24px 20px 20px; }
-  .workspace-list{ grid-template-columns:1fr; }
 }
 @media (max-width:560px){
   .nav{ gap:12px; }

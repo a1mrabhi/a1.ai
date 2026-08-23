@@ -10,6 +10,7 @@ import { useUser } from "@clerk/nextjs";
 import {
   Plus,
   ArrowUp,
+  ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
@@ -939,10 +940,15 @@ export default function AISmartChat() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Dashboard button — same shape/behavior as the AI Data
+               Analyst header's back link: left arrow + label, subtle
+               bordered pill, hover border/text lightens and it nudges
+               left, matching that page's .dash-link treatment. */}
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-base text-zinc-300 hover:text-zinc-100 hover:border-purple-400/50 hover:bg-white/10 transition-all duration-200"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md text-base font-medium text-zinc-300 transition-all duration-200 hover:text-zinc-100 hover:border-purple-400/50 hover:-translate-x-0.5"
             >
+              <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} />
               Dashboard
             </Link>
 

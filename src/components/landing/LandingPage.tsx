@@ -28,17 +28,17 @@ const FEATURES = [
   {
     id: "chat",
     accent: "violet",
-    title: "AI Chat",
-    desc: "Ask questions in plain language and get answers grounded in your own notes and course material, not generic web results.",
+    title: "AI Smart Chat",
+    desc: "Ask anything in plain language and get answers grounded in your own notes and course material, not generic web results.",
     icon: (
       <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
     ),
   },
   {
-    id: "pdf",
+    id: "analyst",
     accent: "amber",
-    title: "PDF Chat",
-    desc: "Drop in a textbook chapter or research paper and ask it questions directly. Every answer points back to the exact page.",
+    title: "AI Data Analyst",
+    desc: "Upload CSV or Excel data and let AI discover patterns, trends, anomalies, and insights with evidence.",
     icon: (
       <>
         <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
@@ -46,83 +46,30 @@ const FEATURES = [
       </>
     ),
   },
+];
+
+const STEPS = [
   {
-    id: "resume",
-    accent: "cyan",
-    title: "Resume Analyzer",
-    desc: "Get line-by-line feedback against the role you're applying for, plus a gap list of skills recruiters are screening for.",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="8" />
-        <circle cx="12" cy="12" r="3.2" />
-        <path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21" />
-      </>
-    ),
+    n: "01",
+    title: "Bring your information",
+    desc: "Upload a spreadsheet, drop in a document, or just start typing — however your information already exists.",
   },
   {
-    id: "study",
-    accent: "coral",
-    title: "Study Assistant",
-    desc: "Turn lecture slides or readings into structured notes and practice questions, sorted by what you're weakest on.",
-    icon: (
-      <>
-        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H12v16H6.5A2.5 2.5 0 0 1 4 17.5v-11Z" />
-        <path d="M20 6.5A2.5 2.5 0 0 0 17.5 4H12v16h5.5a2.5 2.5 0 0 0 2.5-2.5v-11Z" />
-      </>
-    ),
+    n: "02",
+    title: "Let A1.ai understand it",
+    desc: "A1.ai reads the structure, cross-references context, and builds a real understanding of what you gave it.",
+  },
+  {
+    n: "03",
+    title: "Discover what matters",
+    desc: "Patterns, trends, and anomalies surface automatically — with the evidence behind every insight.",
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    quote:
-      "I used the resume analyzer before three internship applications and got callbacks on two. It caught vague bullet points I'd read past a dozen times.",
-    name: "Jordan M.",
-    role: "CS Junior, Applying to Internships",
-    color: "#FFC857",
-    initials: "JM",
-  },
-  {
-    quote:
-      "PDF Chat replaced my habit of skimming 40-page papers the night before seminar. I can ask it what the methodology section actually claims.",
-    name: "Riya S.",
-    role: "Grad Student, Comp Bio",
-    color: "#8C7CF0",
-    initials: "RS",
-  },
-  {
-    quote:
-      "The study assistant turns my lecture slides into practice questions automatically. It's the closest thing to having a TA on call at 1am.",
-    name: "Tomás K.",
-    role: "Bootcamp Grad, Now Junior Dev",
-    color: "#54E8D6",
-    initials: "TK",
-  },
-];
-
-const FAQS = [
-  {
-    q: "Is A1.ai free to use?",
-    a: "Yes — the free plan includes AI Chat, up to 10 PDF uploads a month, and one resume analysis. Paid plans remove those limits and add unlimited study notes.",
-  },
-  {
-    q: "Does it work with course PDFs and scanned readings?",
-    a: "Yes, including scanned documents — A1.ai runs OCR automatically so you can still ask questions about a photographed textbook page.",
-  },
-  {
-    q: "How is the resume feedback generated?",
-    a: "You paste in a job description alongside your resume, and A1.ai compares the two line by line, flagging missing keywords and weak phrasing recruiters tend to skip past.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes, no contracts. Cancel from your account settings and you'll keep access until the end of your current billing period.",
-  },
-];
-
-const SUGGESTIONS = [
-  'Lead with the outcome, not the task — try "Cut API latency 40%" instead of "Worked on backend performance."',
-  "This bullet buries the result. Move the metric to the front so it survives a 6-second recruiter scan.",
-  'Swap "responsible for" for an action verb — "Shipped," "Led," "Reduced" all score higher on ATS parsing.',
+const INSIGHTS = [
+  "Revenue peaks every Friday — consider restocking before the weekend rush.",
+  "Region West is underperforming North by 22% this quarter.",
+  "Anomaly detected: Feb 14 revenue spiked 340% above baseline.",
 ];
 
 /* ------------------------------------------------------------------ */
@@ -183,40 +130,6 @@ function useTypingCycle(strings: string[], speed = 22, hold = 2200) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return text;
-}
-
-function useCountUp(
-  target: number,
-  duration = 1400,
-): [number, React.RefObject<HTMLDivElement | null>] {
-  const [value, setValue] = useState(0);
-  const ref = useRef<HTMLDivElement | null>(null);
-  const started = useRef(false);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting && !started.current) {
-            started.current = true;
-            const start = performance.now();
-            const step = (now: number) => {
-              const p = Math.min((now - start) / duration, 1);
-              const eased = 1 - Math.pow(1 - p, 3);
-              setValue(Math.round(target * eased));
-              if (p < 1) requestAnimationFrame(step);
-            };
-            requestAnimationFrame(step);
-          }
-        });
-      },
-      { threshold: 0.5 },
-    );
-    io.observe(node);
-    return () => io.disconnect();
-  }, [target, duration]);
-  return [value, ref];
 }
 
 /* ------------------------------------------------------------------ */
@@ -312,10 +225,8 @@ function MagneticButton({
 
 export default function A1aiLanding() {
   useReveal();
-  const typed = useTypingCycle(SUGGESTIONS);
-  const [count, countRef] = useCountUp(10000);
+  const typed = useTypingCycle(INSIGHTS);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState(0);
   const { isSignedIn } = useUser();
 
   return (
@@ -339,9 +250,8 @@ export default function A1aiLanding() {
             <a href="#features" onClick={() => setMenuOpen(false)}>
               Features
             </a>
-            {/* <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a> */}
-            <a href="#about" onClick={() => setMenuOpen(false)}>
-              About
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>
+              How it works
             </a>
           </nav>
           <div className="nav-actions">
@@ -370,6 +280,16 @@ export default function A1aiLanding() {
               </>
             )}
           </div>
+          <button
+            className={`menu-toggle ${menuOpen ? "open" : ""}`}
+            aria-label="Toggle menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
       </header>
 
@@ -384,18 +304,17 @@ export default function A1aiLanding() {
         <div className="container hero-grid">
           <div data-reveal>
             <span className="eyebrow">
-              <span className="dot" /> The Future Of AI Starts Here
+              <span className="dot" /> One workspace, two focused tools
             </span>
             <h1>
-              <em>One Workspace</em>
+              <em>One Workspace.</em>
               <br />
-              <span className="grad-text">Unlimited Intelligence.</span>.
+              <span className="grad-text">Unlimited Clarity.</span>
             </h1>
             <p className="hero-sub">
-              A1.ai brings AI smart chat, PDF analysis, and study notes into one
-              place — so you Stop switching between ChatGPT, Claude, Gemini, and
-              dozens of AI tools. A1.ai brings everything into one beautiful
-              workspace.
+              A1.ai brings AI smart chat and AI-powered data analysis into one
+              place — so you stop switching between a dozen tabs and get
+              straight to the answer, grounded in your own material.
             </p>
             <div className="hero-actions">
               <SignUpButton mode="modal">
@@ -404,20 +323,13 @@ export default function A1aiLanding() {
                   <ArrowIcon />
                 </MagneticButton>
               </SignUpButton>
-              {/* <MagneticButton className="btn btn-outline btn-lg">
-                <PlayIcon /> Live demo
-              </MagneticButton> */}
-            </div>
-            <div className="trust-row" ref={countRef}>
-              <div className="trust-avatars">
-                <span style={{ background: "#FFC857" }}>JM</span>
-                <span style={{ background: "#8C7CF0" }}>RS</span>
-                <span style={{ background: "#FF8B7A" }}>TK</span>
-                <span style={{ background: "#54E8D6" }}>NV</span>
-              </div>
-              <p>
-                <b>Launching Soon</b>
-              </p>
+              <MagneticButton
+                as="a"
+                href="#features"
+                className="btn btn-outline btn-lg"
+              >
+                See the tools
+              </MagneticButton>
             </div>
           </div>
 
@@ -427,7 +339,7 @@ export default function A1aiLanding() {
             style={{ transitionDelay: "120ms" }}
           >
             <div className="doc-glow" aria-hidden="true" />
-            <div className="doc-card">
+            <div className="doc-card analyst-card">
               <i className="hud hud-tl" />
               <i className="hud hud-tr" />
               <i className="hud hud-bl" />
@@ -436,29 +348,53 @@ export default function A1aiLanding() {
 
               <div className="doc-card-head">
                 <div className="doc-tab">
-                  <span className="file-dot" /> resume_draft.pdf
+                  <span className="file-dot" /> sales_q3.xlsx
                 </div>
                 <div className="doc-tab reading">
-                  <span className="pulse-dot" /> A1.ai is reading…
+                  <span className="pulse-dot" /> A1.ai is analyzing…
                 </div>
               </div>
 
-              <div className="doc-lines">
-                <div className="doc-line" style={{ width: "92%" }} />
-                <div className="doc-line" style={{ width: "88%" }} />
-                <div className="doc-line highlight" style={{ width: "74%" }} />
-                <div className="doc-line" style={{ width: "95%" }} />
-                <div className="doc-line" style={{ width: "60%" }} />
+              <div className="analyst-stats">
+                <div className="analyst-stat">
+                  <span className="stat-label">Rows</span>
+                  <span className="stat-value">128</span>
+                </div>
+                <div className="analyst-stat">
+                  <span className="stat-label">Columns</span>
+                  <span className="stat-value">9</span>
+                </div>
+                <div className="analyst-stat">
+                  <span className="stat-label">Revenue</span>
+                  <span className="stat-value">$482K</span>
+                </div>
+                <div className="analyst-stat">
+                  <span className="stat-label">Growth</span>
+                  <span className="stat-value up">+18.4%</span>
+                </div>
+              </div>
+
+              <div className="analyst-chart">
+                <span className="chart-label">Revenue trend</span>
+                <div className="chart-bars">
+                  {[38, 52, 46, 68, 60, 84, 74, 96].map((h, i) => (
+                    <span
+                      key={i}
+                      className="bar"
+                      style={{ height: `${h}%`, animationDelay: `${i * 60}ms` }}
+                    />
+                  ))}
+                </div>
               </div>
 
               <div className="annotation">
-                <span className="tag">Suggestion</span>
+                <span className="tag">AI Insight</span>
                 <span>{typed}</span>
                 <span className="caret" />
               </div>
 
               <div className="doc-footer-chip">
-                <CheckIcon /> 3 suggestions applied
+                <CheckIcon /> Patterns, trends &amp; anomalies detected
               </div>
             </div>
           </div>
@@ -471,14 +407,11 @@ export default function A1aiLanding() {
             {[...Array(2)].map((_, dup) => (
               <div className="marquee-group" key={dup}>
                 {[
-                  "MIT",
-                  "Berkeley",
-                  "UMich",
-                  "Georgia Tech",
-                  "UT Austin",
-                  "UCLA",
-                  "Waterloo",
-                  "NYU",
+                  "ONE WORKSPACE",
+                  "SMART CHAT",
+                  "DATA ANALYSIS",
+                  "STRUCTURED INSIGHTS",
+                  "BUILT FOR FOCUS",
                 ].map((u) => (
                   <span key={u}>{u}</span>
                 ))}
@@ -492,11 +425,10 @@ export default function A1aiLanding() {
         <div className="container">
           <div className="section-head" data-reveal>
             <div className="section-eyebrow">What's inside</div>
-            <h2>Four tools. One tab.</h2>
+            <h2>Two tools. Zero clutter.</h2>
             <p>
-              Each one is built around a real thing students and early-career
-              developers get stuck on — not a generic chatbot with a new coat of
-              paint.
+              Each one is built around a real thing you get stuck on — not a
+              generic chatbot with a new coat of paint.
             </p>
           </div>
           <div className="feature-grid">
@@ -507,64 +439,27 @@ export default function A1aiLanding() {
         </div>
       </section>
 
-      <section className="testimonials">
+      <section className="process" id="how-it-works">
         <div className="container">
           <div className="section-head" data-reveal>
-            <div className="section-eyebrow">From the community</div>
-            <h2>What people actually use it for</h2>
+            <div className="section-eyebrow">How it works</div>
+            <h2>From information to insight.</h2>
           </div>
-          <div className="testi-grid">
-            {TESTIMONIALS.map((t, i) => (
+          <div className="process-grid">
+            {STEPS.map((s, i) => (
               <div
-                className="testi-card"
+                className="process-step"
                 data-reveal
-                style={{ transitionDelay: `${i * 80}ms` }}
-                key={t.name}
+                style={{ transitionDelay: `${i * 100}ms` }}
+                key={s.n}
               >
-                <span className="quote-mark">“</span>
-                <p className="testi-quote">{t.quote}</p>
-                <div className="testi-person">
-                  <div className="testi-avatar" style={{ background: t.color }}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <p>{t.name}</p>
-                    <p>{t.role}</p>
-                  </div>
-                </div>
+                <span className="process-num">{s.n}</span>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
               </div>
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="faq" id="about">
-        <div className="section-head" data-reveal>
-          <div className="section-eyebrow">Questions</div>
-          <h2>Before you start</h2>
-        </div>
-        {FAQS.map((item, i) => {
-          const open = openFaq === i;
-          return (
-            <div
-              className={`faq-item ${open ? "open" : ""}`}
-              key={item.q}
-              data-reveal
-              style={{ transitionDelay: `${i * 50}ms` }}
-            >
-              <button
-                className="faq-q"
-                onClick={() => setOpenFaq(open ? -1 : i)}
-              >
-                {item.q}
-                <span className="plus" />
-              </button>
-              <div className="faq-a">
-                <div className="faq-a-inner">{item.a}</div>
-              </div>
-            </div>
-          );
-        })}
       </section>
 
       <section className="final-cta">
@@ -574,9 +469,9 @@ export default function A1aiLanding() {
         </div>
         <div className="container" data-reveal>
           <h2>
-            Get through the reading list
+            Bring your information.
             <br />
-            and the job hunt <span className="grad-text">faster</span>.
+            Get <span className="grad-text">clarity</span> faster.
           </h2>
           <p>Free to start. No credit card required.</p>
           <SignUpButton mode="modal">
@@ -599,53 +494,82 @@ export default function A1aiLanding() {
                 A1.ai
               </div>
               <p>
-                An AI workspace for students and developers — chat, PDFs,
-                resumes, and study notes, in one place.
+                A focused AI workspace for chat and data analysis — built to
+                stay out of your way.
               </p>
             </div>
             <div className="footer-col">
               <h4>Product</h4>
               <ul>
                 <li>
-                  <a href="#features">Features</a>
+                  <a href="#features">AI Smart Chat</a>
                 </li>
                 <li>
-                  <a href="#pricing">Pricing</a>
+                  <a href="#features">AI Data Analyst</a>
                 </li>
                 <li>
-                  <a href="#">Live demo</a>
+                  <a href="#how-it-works">How it works</a>
                 </li>
               </ul>
             </div>
             <div className="footer-col">
-              <h4>Company</h4>
+              <h4>Get started</h4>
               <ul>
                 <li>
-                  <a href="#about">About</a>
+                  <a href="#features">Explore tools</a>
                 </li>
                 <li>
-                  <a href="#">Blog</a>
+                  <SignInButton mode="modal">
+                    <a href="#">Sign in</a>
+                  </SignInButton>
                 </li>
                 <li>
-                  <a href="#">Contact</a>
+                  <SignUpButton mode="modal">
+                    <a href="#">Create account</a>
+                  </SignUpButton>
                 </li>
               </ul>
             </div>
-            <div className="footer-col">
-              <h4>Legal</h4>
-              <ul>
-                <li>
-                  <a href="#">Privacy</a>
-                </li>
-                <li>
-                  <a href="#">Terms</a>
-                </li>
-              </ul>
+            <div className="footer-col footer-connect">
+              <h4>Connect</h4>
+              <div className="social-row">
+                <a
+                  href="https://www.linkedin.com/in/abhishek-tiwari-b248a63a6/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="social-icon"
+                >
+                  <LinkedinIcon />
+                </a>
+                <a
+                  href="https://github.com/a1mrabhi"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="GitHub"
+                  className="social-icon"
+                >
+                  <GithubIcon />
+                </a>
+                <a
+                  href="https://instagram.com/abhishektiwari._.1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="social-icon"
+                >
+                  <InstagramIcon />
+                </a>
+              </div>
+
+              <span className="contact-label">Contact</span>
+              <a href="mailto:abhirta1@gmail.com" className="contact-email">
+                abhirta1@gmail.com
+              </a>
             </div>
           </div>
           <div className="footer-bottom">
             <span>© 2026 A1.ai. All rights reserved.</span>
-            <span>Made for late study nights.</span>
           </div>
         </div>
       </footer>
@@ -673,13 +597,6 @@ function ArrowIcon() {
     </svg>
   );
 }
-function PlayIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M6 4.5v15l13-7.5-13-7.5Z" />
-    </svg>
-  );
-}
 function CheckIcon() {
   return (
     <svg
@@ -693,6 +610,48 @@ function CheckIcon() {
       strokeLinejoin="round"
     >
       <path d="M4 12l5 5L20 6" />
+    </svg>
+  );
+}
+function LinkedinIcon() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M7.5 10.5v6M7.5 7.5v.01M11.5 16.5v-4a2 2 0 0 1 4 0v4M11.5 12.5v4" />
+    </svg>
+  );
+}
+function GithubIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.2a9.8 9.8 0 0 0-3.1 19.1c.5.1.7-.2.7-.5v-1.8c-2.7.6-3.3-1.2-3.3-1.2-.4-1.1-1-1.4-1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.7.4-1.1.6-1.4-2.2-.2-4.5-1.1-4.5-4.9 0-1.1.4-1.9 1-2.6-.1-.3-.4-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 4.9 0c1.9-1.3 2.7-1 2.7-1 .5 1.3.2 2.3.1 2.6.6.7 1 1.6 1 2.6 0 3.8-2.3 4.6-4.5 4.9.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A9.8 9.8 0 0 0 12 2.2Z" />
+    </svg>
+  );
+}
+function InstagramIcon() {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5.5" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M17.2 6.8h.01" />
     </svg>
   );
 }
@@ -750,7 +709,7 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 .logo{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:600; font-size:19px; }
 .mark{ width:24px; height:24px; border-radius:7px; position:relative; background:conic-gradient(from 180deg, var(--amber), var(--violet), var(--cyan), var(--amber)); flex-shrink:0; animation:markSpin 6s linear infinite; padding:2px; }
 .mark-core{ position:absolute; inset:2px; border-radius:5px; background:var(--bg); }
-@keyframes markSpin{ to{ filter:hue-rotate(360deg); } }
+@keyframes markSpin{ to{ transform:rotate(360deg); } }
 .nav-links{ display:flex; align-items:center; gap:34px; font-size:14.5px; color:var(--text-secondary); }
 .nav-links a{ transition:color .15s ease; position:relative; }
 .nav-links a::after{ content:''; position:absolute; left:0; right:0; bottom:-4px; height:1px; background:var(--violet); transform:scaleX(0); transition:transform .25s ease; }
@@ -770,8 +729,11 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 .btn-outline:hover{ border-color:var(--violet); box-shadow:0 0 0 1px var(--violet-dim), 0 0 24px -6px rgba(140,124,240,.5); }
 .btn-lg{ padding:14px 24px; font-size:15px; }
 .magnetic{ will-change:transform; }
-.menu-toggle{ display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:6px; }
-.menu-toggle span{ width:20px; height:2px; background:var(--text-primary); border-radius:2px; }
+.menu-toggle{ display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:6px; position:relative; z-index:1; }
+.menu-toggle span{ width:20px; height:2px; background:var(--text-primary); border-radius:2px; transition:transform .25s ease, opacity .2s ease; }
+.menu-toggle.open span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
+.menu-toggle.open span:nth-child(2){ opacity:0; }
+.menu-toggle.open span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
 
 /* ---------- Hero ---------- */
 .hero{ padding:96px 0 76px; overflow:hidden; }
@@ -804,17 +766,7 @@ h1 em{ font-style:italic; color:var(--amber); }
 }
 @keyframes gradShift{ 0%,100%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } }
 .hero-sub{ font-size:17px; line-height:1.6; color:var(--text-secondary); max-width:470px; margin-bottom:32px; }
-.hero-actions{ display:flex; align-items:center; gap:14px; margin-bottom:40px; }
-.trust-row{ display:flex; align-items:center; gap:14px; }
-.trust-avatars{ display:flex; }
-.trust-avatars span{
-  width:31px; height:31px; border-radius:50%; border:2px solid var(--bg); margin-left:-8px;
-  font-family:var(--font-mono); font-size:10.5px; font-weight:600; display:flex; align-items:center; justify-content:center;
-  color:#1A1200; box-shadow:0 0 0 1px rgba(255,255,255,.06);
-}
-.trust-avatars span:first-child{ margin-left:0; }
-.trust-row p{ font-size:13.5px; color:var(--text-tertiary); }
-.trust-row b{ color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+.hero-actions{ display:flex; align-items:center; gap:14px; margin-bottom:8px; }
 
 /* ---------- Signature doc card ---------- */
 .doc-wrap{ position:relative; }
@@ -847,14 +799,20 @@ h1 em{ font-style:italic; color:var(--amber); }
 .file-dot{ width:7px; height:7px; border-radius:2px; background:var(--amber); }
 .pulse-dot{ width:6px; height:6px; border-radius:50%; background:var(--violet); animation:blink 1.3s ease-in-out infinite; }
 @keyframes blink{ 0%,100%{ opacity:1;} 50%{ opacity:.25;} }
-.doc-lines{ display:flex; flex-direction:column; gap:9px; margin-bottom:16px; }
-.doc-line{ height:9px; border-radius:3px; background:var(--surface-solid); }
-.doc-line.highlight{ background:var(--amber-dim); border:1px solid rgba(255,200,87,.4); position:relative; overflow:hidden; }
-.doc-line.highlight::after{
-  content:''; position:absolute; inset:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
-  animation:sweep 2.6s ease-in-out infinite;
+.analyst-stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+.analyst-stat{ background:var(--surface-solid); border:1px solid var(--border); border-radius:10px; padding:11px 13px; display:flex; flex-direction:column; gap:5px; }
+.stat-label{ font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary); }
+.stat-value{ font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--text-primary); }
+.stat-value.up{ color:var(--cyan); }
+.analyst-chart{ margin-bottom:16px; }
+.chart-label{ font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary); display:block; margin-bottom:9px; }
+.chart-bars{ display:flex; align-items:flex-end; gap:5px; height:52px; }
+.chart-bars .bar{
+  flex:1; border-radius:3px 3px 0 0; background:linear-gradient(180deg, var(--amber), rgba(255,200,87,.2));
+  transform:scaleY(0); transform-origin:bottom; animation:barGrow .7s cubic-bezier(.16,1,.3,1) forwards;
 }
-@keyframes sweep{ 0%{ transform:translateX(-120%);} 100%{ transform:translateX(220%);} }
+.chart-bars .bar:nth-child(even){ background:linear-gradient(180deg, var(--violet), rgba(140,124,240,.2)); }
+@keyframes barGrow{ to{ transform:scaleY(1); } }
 .annotation{
   margin-top:4px; background:var(--violet-dim); border:1px solid rgba(140,124,240,.35); border-radius:10px;
   padding:12px 14px; font-size:12.5px; line-height:1.5; color:#D6D2FA; min-height:64px;
@@ -879,58 +837,54 @@ h1 em{ font-style:italic; color:var(--amber); }
 
 /* ---------- Features ---------- */
 .features{ padding:104px 0 92px; }
-.feature-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.feature-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:22px; max-width:840px; margin:0 auto; }
 .feature-card{
-  position:relative; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:26px 22px;
-  transition:border-color .25s ease, transform .25s ease; overflow:hidden;
+  position:relative; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:34px 30px;
+  transition:border-color .25s ease, transform .25s ease, box-shadow .25s ease; overflow:hidden;
 }
-.feature-card:hover{ transform:translateY(-4px); border-color:var(--border-hover); }
+.feature-card:hover{ transform:translateY(-5px); border-color:var(--border-hover); box-shadow:0 26px 52px -28px rgba(140,124,240,.4); }
 .feature-spot{
   position:absolute; inset:0; opacity:0; transition:opacity .3s ease; pointer-events:none;
-  background:radial-gradient(220px circle at var(--mx,50%) var(--my,50%), rgba(140,124,240,.14), transparent 70%);
+  background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(140,124,240,.14), transparent 70%);
 }
+.accent-amber .feature-spot{ background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(255,200,87,.14), transparent 70%); }
 .feature-card:hover .feature-spot{ opacity:1; }
-.feature-corner{ position:absolute; top:14px; right:14px; width:6px; height:6px; border-radius:50%; background:var(--border-hover); opacity:0; transition:opacity .25s ease; }
+.feature-corner{ position:absolute; top:16px; right:16px; width:6px; height:6px; border-radius:50%; background:var(--border-hover); opacity:0; transition:opacity .25s ease; }
 .feature-card:hover .feature-corner{ opacity:1; box-shadow:0 0 10px 2px rgba(140,124,240,.6); }
-.feature-icon{ width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:18px; position:relative; z-index:1; }
-.feature-icon svg{ width:19px; height:19px; }
+.feature-icon{ width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:22px; position:relative; z-index:1; transition:transform .25s ease; }
+.feature-card:hover .feature-icon{ transform:scale(1.08) rotate(-4deg); }
+.feature-icon svg{ width:22px; height:22px; }
 .accent-violet .feature-icon{ background:var(--violet-dim); color:var(--violet); }
 .accent-amber .feature-icon{ background:var(--amber-dim); color:var(--amber); }
 .accent-cyan .feature-icon{ background:var(--cyan-dim); color:var(--cyan); }
 .accent-coral .feature-icon{ background:var(--coral-dim); color:var(--coral); }
-.feature-card h3{ font-family:var(--font-display); font-weight:600; font-size:16.5px; margin-bottom:9px; position:relative; z-index:1; }
-.feature-card p{ font-size:13.5px; color:var(--text-secondary); line-height:1.55; position:relative; z-index:1; }
+.feature-card h3{ font-family:var(--font-display); font-weight:600; font-size:20px; margin-bottom:11px; position:relative; z-index:1; }
+.feature-card p{ font-size:14.5px; color:var(--text-secondary); line-height:1.65; position:relative; z-index:1; }
 
-/* ---------- Testimonials ---------- */
-.testimonials{ padding:92px 0; background:var(--bg-alt); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
-.testi-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-.testi-card{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:26px 24px 24px; transition:border-color .25s ease, transform .25s ease; }
-.testi-card:hover{ border-color:var(--border-hover); transform:translateY(-3px); }
-.quote-mark{ position:absolute; top:10px; right:18px; font-family:var(--font-display); font-size:46px; color:rgba(140,124,240,.18); line-height:1; }
-.testi-quote{ font-size:14.5px; line-height:1.65; color:var(--text-primary); margin-bottom:20px; position:relative; z-index:1; }
-.testi-person{ display:flex; align-items:center; gap:11px; }
-.testi-avatar{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:11.5px; font-weight:600; color:#1A1200; box-shadow:0 0 0 3px rgba(255,255,255,.04); }
-.testi-person div p:first-child{ font-size:13.5px; font-weight:600; }
-.testi-person div p:last-child{ font-size:12px; color:var(--text-tertiary); margin-top:1px; }
-
-/* ---------- FAQ ---------- */
-.faq{ padding:92px 0; max-width:720px; margin:0 auto; }
-.faq-item{ border-bottom:1px solid var(--border); position:relative; padding-left:14px; transition:border-color .2s ease; }
-.faq-item::before{ content:''; position:absolute; left:0; top:20px; bottom:20px; width:2px; border-radius:2px; background:var(--violet); opacity:0; transition:opacity .25s ease; }
-.faq-item.open::before{ opacity:1; box-shadow:0 0 10px 1px rgba(140,124,240,.6); }
-.faq-q{
-  width:100%; text-align:left; background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
-  padding:22px 4px; color:var(--text-primary); font-family:var(--font-body); font-size:15.5px; font-weight:500;
+/* ---------- Process (How it works) ---------- */
+.process{ padding:92px 0 104px; background:var(--bg-alt); border-top:1px solid var(--border); border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
+.process-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; max-width:980px; margin:0 auto; position:relative; }
+.process-grid::before{
+  content:''; position:absolute; top:27px; left:12%; right:12%; height:1px;
+  background:linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
+  z-index:0;
 }
-.faq-q .plus{ position:relative; width:16px; height:16px; flex-shrink:0; margin-left:20px; }
-.faq-q .plus::before, .faq-q .plus::after{ content:''; position:absolute; background:var(--amber); border-radius:2px; transition:transform .3s ease; }
-.faq-q .plus::before{ left:0; top:7px; width:16px; height:2px; }
-.faq-q .plus::after{ left:7px; top:0; width:2px; height:16px; }
-.faq-item.open .plus::after{ transform:rotate(90deg); }
-.faq-a{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s cubic-bezier(.16,1,.3,1); }
-.faq-item.open .faq-a{ grid-template-rows:1fr; }
-.faq-a-inner{ overflow:hidden; font-size:14px; color:var(--text-secondary); line-height:1.65; padding-right:4px; }
-.faq-item.open .faq-a-inner{ padding-bottom:22px; }
+.process-step{ position:relative; z-index:1; }
+.process-num{
+  position:relative; display:inline-flex; align-items:center; justify-content:center; width:54px; height:54px;
+  border-radius:50%; background:var(--surface-solid); border:1px solid var(--border);
+  font-family:var(--font-mono); font-size:15px; font-weight:600; margin-bottom:22px;
+  transition:border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+}
+.process-step:hover .process-num{ transform:translateY(-3px); }
+.process-step:nth-child(1) .process-num{ color:var(--violet); }
+.process-step:nth-child(2) .process-num{ color:var(--amber); }
+.process-step:nth-child(3) .process-num{ color:var(--cyan); }
+.process-step:nth-child(1):hover .process-num{ border-color:var(--violet); box-shadow:0 0 0 4px var(--violet-dim), 0 0 24px -6px rgba(140,124,240,.6); }
+.process-step:nth-child(2):hover .process-num{ border-color:var(--amber); box-shadow:0 0 0 4px var(--amber-dim), 0 0 24px -6px rgba(255,200,87,.6); }
+.process-step:nth-child(3):hover .process-num{ border-color:var(--cyan); box-shadow:0 0 0 4px var(--cyan-dim), 0 0 24px -6px rgba(84,232,214,.6); }
+.process-step h3{ font-family:var(--font-display); font-weight:600; font-size:19px; margin-bottom:10px; }
+.process-step p{ font-size:14px; color:var(--text-secondary); line-height:1.65; max-width:290px; }
 
 /* ---------- Final CTA ---------- */
 .final-cta{ padding:100px 0 110px; text-align:center; overflow:hidden; }
@@ -940,29 +894,48 @@ h1 em{ font-style:italic; color:var(--amber); }
 
 /* ---------- Footer ---------- */
 footer{ border-top:1px solid var(--border); padding:56px 0 34px; }
-.footer-grid{ display:grid; grid-template-columns:1.4fr repeat(3,1fr); gap:32px; margin-bottom:44px; }
+.footer-grid{ display:grid; grid-template-columns:1.2fr repeat(3,1fr); gap:32px; margin-bottom:44px; }
 .footer-brand p{ font-size:13.5px; color:var(--text-tertiary); margin-top:14px; line-height:1.6; max-width:260px; }
 .footer-col h4{ font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:16px; }
 .footer-col ul{ list-style:none; display:flex; flex-direction:column; gap:11px; }
 .footer-col a{ font-size:13.5px; color:var(--text-secondary); transition:color .15s ease; }
 .footer-col a:hover{ color:var(--text-primary); }
-.footer-bottom{ border-top:1px solid var(--border); padding-top:24px; display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--text-tertiary); }
+.footer-bottom{ border-top:1px solid var(--border); padding-top:24px; font-size:12.5px; color:var(--text-tertiary); }
+
+/* ---------- Footer: connect / socials / contact reveal ---------- */
+.social-row{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.social-icon{
+  width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface); border:1px solid var(--border); color:var(--text-secondary);
+  transition:border-color .2s ease, color .2s ease, transform .2s ease;
+}
+.social-icon:hover{ border-color:var(--border-hover); color:var(--violet); transform:translateY(-2px); }
+.contact-label{ display:block; font-family:var(--font-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:8px; }
+.contact-email{
+  display:inline-block; font-family:var(--font-mono); font-size:13px; color:var(--cyan);
+  border-bottom:1px solid rgba(84,232,214,.35); transition:color .15s ease, border-color .15s ease;
+}
+.contact-email:hover{ color:var(--text-primary); border-color:var(--text-primary); }
 
 /* ---------- Responsive ---------- */
 @media (max-width:900px){
   .hero-grid{ grid-template-columns:1fr; padding-top:10px; }
-  .feature-grid{ grid-template-columns:repeat(2,1fr); }
-  .testi-grid{ grid-template-columns:1fr; }
+  .feature-grid{ grid-template-columns:1fr; max-width:440px; }
+  .process-grid{ grid-template-columns:1fr; gap:40px; max-width:440px; margin:0 auto; }
+  .process-grid::before{ display:none; }
   .footer-grid{ grid-template-columns:1fr 1fr; }
   .nav-links{ position:absolute; top:100%; left:0; right:0; flex-direction:column; align-items:flex-start; gap:0; background:rgba(5,7,14,.97); backdrop-filter:blur(14px); border-bottom:1px solid var(--border); max-height:0; overflow:hidden; transition:max-height .3s ease; }
   .nav-links.open{ max-height:260px; }
   .nav-links a{ padding:14px 24px; width:100%; }
+  .nav-actions .login-btn{ display:none; }
   .menu-toggle{ display:flex; }
 }
 @media (max-width:560px){
-  .feature-grid{ grid-template-columns:1fr; }
-  .footer-grid{ grid-template-columns:1fr; }
-  .hero-actions{ flex-direction:column; align-items:flex-start; }
+  .footer-grid{ grid-template-columns:1fr; gap:28px; }
+  .hero-actions{ flex-direction:column; align-items:stretch; }
+  .hero-actions .btn{ justify-content:center; }
+  .analyst-stats{ gap:8px; }
+  h1{ font-size:clamp(30px,8vw,40px); }
 }
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; }
