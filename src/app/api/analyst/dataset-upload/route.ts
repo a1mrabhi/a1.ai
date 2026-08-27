@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { parseDataset } from "@/lib/analyst/datasetParser";
 import { profileDataset } from "@/lib/analyst/datasetProfiler";
 import { normalizeColumnType } from "@/lib/analyst/analystTypes";
@@ -47,12 +48,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // ------------------------------------------------------------
+    // Parse uploaded file
+    // ------------------------------------------------------------
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const dataset = parseDataset(buffer, file.name);
+    const parsedDataset = parseDataset(buffer, file.name);
 
-    if (dataset.rowCount === 0) {
+    if (parsedDataset.rowCount === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -62,7 +67,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (dataset.columnCount === 0) {
+    if (parsedDataset.columnCount === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -72,45 +77,85 @@ export async function POST(request: Request) {
       );
     }
 
-    const previewRows = dataset.rows.slice(0, 20);
+    // ------------------------------------------------------------
+    // Build column metadata
+    // ------------------------------------------------------------
 
-    const normalizedColumns = dataset.columns.map((columnName) => {
-  const sampleValue = dataset.rows.find(
-    (row) => row[columnName] !== null && row[columnName] !== undefined
-  )?.[columnName];
+    const previewRows = parsedDataset.rows.slice(0, 20);
 
-  const missingCount = dataset.rows.filter(
-    (row) => row[columnName] === null || row[columnName] === undefined
-  ).length;
+    const normalizedColumns = parsedDataset.columns.map((columnName) => {
+      const sampleValue = parsedDataset.rows.find(
+        (row) =>
+          row[columnName] !== null &&
+          row[columnName] !== undefined,
+      )?.[columnName];
 
-  return {
-    name: columnName,
-    type: normalizeColumnType(
-      sampleValue === undefined ? "unknown" : typeof sampleValue
-    ),
-    missing: missingCount,
-  };
-});
+      const missingCount = parsedDataset.rows.filter(
+        (row) =>
+          row[columnName] === null ||
+          row[columnName] === undefined,
+      ).length;
+
+      return {
+        name: columnName,
+        type: normalizeColumnType(
+          sampleValue === undefined
+            ? "unknown"
+            : typeof sampleValue,
+        ),
+        missing: missingCount,
+      };
+    });
+
+    // ------------------------------------------------------------
+    // Generate dataset profile
+    // ------------------------------------------------------------
 
     const profile = profileDataset({
-      fileName: dataset.fileName,
+      fileName: parsedDataset.fileName,
       fileSize: file.size,
-      rowCount: dataset.rowCount,
-      columnCount: dataset.columnCount,
+      rowCount: parsedDataset.rowCount,
+      columnCount: parsedDataset.columnCount,
       columns: normalizedColumns,
       previewRows,
     });
 
+    // ------------------------------------------------------------
+    // Save dataset to PostgreSQL
+    // ------------------------------------------------------------
+
+    const savedDataset = await prisma.analystDataset.create({
+      data: {
+        fileName: parsedDataset.fileName,
+        fileSize: file.size,
+        mimeType: file.type || null,
+
+        rowCount: parsedDataset.rowCount,
+        columnCount: parsedDataset.columnCount,
+
+        columns: normalizedColumns,
+        rows: JSON.parse(JSON.stringify(parsedDataset.rows)),
+      },
+    });
+
+    // ------------------------------------------------------------
+    // Return dataset + database ID
+    // ------------------------------------------------------------
+
     return NextResponse.json({
       success: true,
+
       dataset: {
-        fileName: dataset.fileName,
-        sheetName: dataset.sheetName,
-        rowCount: dataset.rowCount,
-        columnCount: dataset.columnCount,
-        columns: normalizedColumns,
-        previewRows,
-      },
+  id: savedDataset.id,
+  fileName: savedDataset.fileName,
+  fileSize: savedDataset.fileSize,
+  mimeType: savedDataset.mimeType,
+  rowCount: savedDataset.rowCount,
+  columnCount: savedDataset.columnCount,
+  columns: savedDataset.columns,
+  previewRows: parsedDataset.rows.slice(0, 20),
+},
+
       profile,
     });
   } catch (error) {

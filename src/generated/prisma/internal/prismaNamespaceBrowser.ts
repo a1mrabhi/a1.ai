@@ -55,7 +55,10 @@ export const ModelName = {
   Chat: 'Chat',
   Message: 'Message',
   Document: 'Document',
-  DocumentChunk: 'DocumentChunk'
+  DocumentChunk: 'DocumentChunk',
+  AnalystDataset: 'AnalystDataset',
+  AnalystConversation: 'AnalystConversation',
+  AnalystMessage: 'AnalystMessage'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -134,12 +137,59 @@ export const DocumentChunkScalarFieldEnum = {
 export type DocumentChunkScalarFieldEnum = (typeof DocumentChunkScalarFieldEnum)[keyof typeof DocumentChunkScalarFieldEnum]
 
 
+export const AnalystDatasetScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  fileName: 'fileName',
+  fileSize: 'fileSize',
+  mimeType: 'mimeType',
+  sheetName: 'sheetName',
+  rowCount: 'rowCount',
+  columnCount: 'columnCount',
+  columns: 'columns',
+  rows: 'rows',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AnalystDatasetScalarFieldEnum = (typeof AnalystDatasetScalarFieldEnum)[keyof typeof AnalystDatasetScalarFieldEnum]
+
+
+export const AnalystConversationScalarFieldEnum = {
+  id: 'id',
+  datasetId: 'datasetId',
+  title: 'title',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AnalystConversationScalarFieldEnum = (typeof AnalystConversationScalarFieldEnum)[keyof typeof AnalystConversationScalarFieldEnum]
+
+
+export const AnalystMessageScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  role: 'role',
+  content: 'content',
+  createdAt: 'createdAt'
+} as const
+
+export type AnalystMessageScalarFieldEnum = (typeof AnalystMessageScalarFieldEnum)[keyof typeof AnalystMessageScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -156,4 +206,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 

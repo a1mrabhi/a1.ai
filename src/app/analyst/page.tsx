@@ -9,6 +9,8 @@ import {
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import type { DatasetColumn } from "@/lib/analyst/analystTypes";
+import "./analyst.css";
+import AnalystResults from "./AnalystResults";
 
 type DatasetInfo = {
   fileName: string;
@@ -148,34 +150,36 @@ export default function AnalystPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [showScrollCue, setShowScrollCue] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const [analysisError, setAnalysisError] = useState("");
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [initialChat, setInitialChat] = useState<{
+    question: string;
+    answer: string;
+  } | null>(null);
 
   useReveal(dataset);
 
-  // Show the "scroll to results" cue exactly once, right when a dataset
-  // finishes uploading. It never reappears from the user scrolling around —
-  // only a fresh upload (dataset going from null -> a new value) resets it.
-  useEffect(() => {
-    if (dataset) {
-      setShowScrollCue(true);
-    } else {
-      setShowScrollCue(false);
-    }
-  }, [dataset]);
+ useEffect(() => {
+  if (!analysisResult) return;
 
-  const scrollToResults = () => {
+  requestAnimationFrame(() => {
     window.scrollTo({
-      top: document.documentElement.scrollHeight,
+      top: 0,
       behavior: "smooth",
     });
-    setShowScrollCue(false);
-  };
+  });
+}, [analysisResult]);
 
   const handleFile = async (selectedFile: File | undefined) => {
-    if (!selectedFile) return;
+  if (!selectedFile) return;
 
-    setError("");
-    setDataset(null);
+  setError("");
+  setAnalysisError("");
+  setAnalysisResult(null);
+  setInitialChat(null);
+  setDataset(null);
 
     const allowedExtensions = ["csv", "xls", "xlsx"];
     const extension = selectedFile.name.split(".").pop()?.toLowerCase();
@@ -210,7 +214,6 @@ export default function AnalystPage() {
 
       setDataset(data.dataset);
     } catch (err) {
-      console.error("Dataset upload failed:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -240,6 +243,72 @@ export default function AnalystPage() {
   };
 
   const isReady = !!dataset && !loading;
+  const handleDiscover = async (question: string) => {
+    if (!dataset || analyzing) return;
+
+    const prompt = question.trim();
+    if (!prompt) return;
+
+    setAnalyzing(true);
+    setAnalysisError("");
+
+    try {
+      const analysisResponse = await fetch("/api/analyst/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rows: dataset.previewRows,
+          columns: dataset.columns,
+        }),
+      });
+
+      const analysisPayload = await analysisResponse.json();
+
+      if (!analysisResponse.ok || !analysisPayload.success) {
+        throw new Error(
+          analysisPayload.error || "Failed to analyze the dataset.",
+        );
+      }
+
+      const chatResponse = await fetch("/api/analyst/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: prompt,
+          rows: dataset.previewRows,
+          columns: dataset.columns,
+          analysis: analysisPayload.analysis,
+          fileName: dataset.fileName,
+        }),
+      });
+
+      const chatPayload = await chatResponse.json();
+
+      if (!chatResponse.ok || !chatPayload.success) {
+        throw new Error(
+          chatPayload.error || "Failed to generate the discovery.",
+        );
+      }
+
+      const answer = String(
+        chatPayload.answer ??
+          chatPayload.message ??
+          chatPayload.response ??
+          "I couldn't generate an answer for that discovery.",
+      );
+
+      setInitialChat({ question: prompt, answer });
+      setAnalysisResult(analysisPayload.analysis);
+    } catch (error) {
+      setAnalysisError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while discovering your data.",
+      );
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <>
@@ -272,51 +341,46 @@ export default function AnalystPage() {
         </div>
       </header>
 
-      <main className="analyst-page">
-        {/* HERO */}
-        <section className="hero">
-          <div className="aurora" aria-hidden="true">
-            <span className="blob blob-violet" />
-            <span className="blob blob-amber" />
-            <span className="blob blob-cyan" />
-            <div className="grid-floor" />
-            <span className="beam beam-l" />
-            <span className="beam beam-r" />
-            <span className="particle p1" />
-            <span className="particle p2" />
-            <span className="particle p3" />
-            <span className="particle p4" />
-          </div>
+      {analysisResult ? (
+  <AnalystResults
+    analysis={analysisResult}
+    fileName={dataset?.fileName}
+    rows={dataset?.previewRows ?? []}
+    columns={dataset?.columns ?? []}
+    initialQuestion={initialChat?.question}
+    initialAnswer={initialChat?.answer}
+  />
+) : (
 
-          <div className="container hero-inner">
-            <h1 className="hero-enter-2" key={isReady ? "ready-h1" : "empty-h1"}>
-              {isReady ? (
-                <>
-                  Your data is ready.
-                  <span className="grad-text">Let&rsquo;s discover what matters.</span>
-                </>
-              ) : (
-                <>
-                  Understand your data.
-                  <span className="grad-text">Discover what matters.</span>
-                </>
-              )}
-            </h1>
+      <main className={`analyst-page ${isReady ? "analyst-page-ready" : ""}`}>
+        {!isReady && (
+          <section className="hero">
+            <div className="aurora" aria-hidden="true">
+              <span className="blob blob-violet" />
+              <span className="blob blob-amber" />
+              <span className="blob blob-cyan" />
+              <div className="grid-floor" />
+              <span className="beam beam-l" />
+              <span className="beam beam-r" />
+              <span className="particle p1" />
+              <span className="particle p2" />
+              <span className="particle p3" />
+              <span className="particle p4" />
+            </div>
+            <div className="container hero-inner">
+              <h1 className="hero-enter-2">
+                Understand your data.
+                <span className="grad-text">Discover what matters.</span>
+              </h1>
+              <p className="hero-sub hero-enter-3">
+                Upload a CSV or Excel dataset and let A1.ai find patterns,
+                trends, anomalies, and useful insights.
+              </p>
+            </div>
+          </section>
+        )}
 
-            <p
-              className="hero-sub hero-enter-3"
-              key={isReady ? "ready-p" : "empty-p"}
-            >
-              {isReady
-                ? "Your dataset has been parsed successfully. Review the structure and preview below, then let A1.ai uncover the insights."
-                : "Upload a CSV or Excel dataset and let A1.ai find patterns, trends, anomalies, and useful insights."}
-            </p>
-          </div>
-        </section>
-
-        <div className="container analyst-container">
-          {/* hidden input lives outside the conditional so both the big
-              card and the compact bar can trigger it */}
+        <div className={`container analyst-container ${isReady ? "discovery-container" : ""}`}>
           <input
             ref={inputRef}
             type="file"
@@ -325,34 +389,7 @@ export default function AnalystPage() {
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
 
-          {isReady ? (
-            /* ---------------- COMPACT SUCCESS BAR ---------------- */
-            <div className="upload-compact" data-reveal>
-              <div className="uc-left">
-                <div className="uc-icon">
-                  <CheckBadgeIcon />
-                  <span className="uc-icon-ring" />
-                </div>
-                <div className="uc-text">
-                  <span className="uc-name">{dataset!.fileName}</span>
-                  <span className="uc-meta">
-                    {dataset!.rowCount} rows · {dataset!.columnCount} cols ·{" "}
-                    {dataset!.sheetName}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="uc-change"
-                onClick={() => inputRef.current?.click()}
-              >
-                Choose another file
-                <ArrowIcon />
-              </button>
-            </div>
-          ) : (
-            /* ---------------- BIG UPLOAD CARD (empty / loading) ---------------- */
+          {!isReady ? (
             <div
               ref={uploadCardRef}
               className={`upload-card ${loading ? "is-loading" : ""} ${dragActive ? "is-drag" : ""}`}
@@ -407,127 +444,51 @@ export default function AnalystPage() {
                 </>
               )}
             </div>
-          )}
+          ) : (
+            <section className="discovery-card" data-reveal>
+              <div className="discovery-glow" aria-hidden="true" />
 
-          {/* ERROR */}
-          {error && (
-            <div className="error-card">
-              <span>!</span>
-              <p>{error}</p>
-            </div>
-          )}
-
-          {/* DATASET RESULT */}
-          {dataset && !loading && (
-            <section className="dataset-result">
-              {/* RESULT HEADER */}
-              <div className="result-header" data-reveal>
-                <div>
-                  <div className="ready-label">
-                    <span className="status-dot" />
-                    DATASET READY
-                  </div>
-                  <h2>{dataset.fileName}</h2>
-                  <p>{dataset.sheetName} · Dataset successfully parsed</p>
-                </div>
-              </div>
-
-              {/* STAT CARDS */}
-              <div className="stats-grid">
-                {[
-                  {
-                    label: "ROWS",
-                    value: dataset.rowCount,
-                    sub: "records detected",
-                  },
-                  {
-                    label: "COLUMNS",
-                    value: dataset.columnCount,
-                    sub: "fields detected",
-                  },
-                  { label: "SHEET", value: 1, sub: dataset.sheetName },
-                  {
-                    label: "STATUS",
-                    value: "Ready",
-                    sub: "awaiting analysis",
-                    ready: true,
-                  },
-                ].map((s, i) => (
-                  <div
-                    className="stat-card"
-                    data-reveal
-                    style={{ transitionDelay: `${i * 70}ms` }}
-                    key={s.label}
-                  >
-                    <span>{s.label}</span>
-                    <strong className={s.ready ? "ready-text" : ""}>
-                      {s.value}
-                    </strong>
-                    <small>{s.sub}</small>
-                  </div>
-                ))}
-              </div>
-
-              {/* COLUMNS */}
-              <div className="columns-card" data-reveal>
-                <div className="section-heading">
+              <div className="discovery-header">
+                <div className="discovery-status">
+                  <span className="discovery-check">
+                    <CheckBadgeIcon />
+                  </span>
                   <div>
-                    <span>DATA STRUCTURE</span>
-                    <h3>Detected columns</h3>
+                    <span className="discovery-eyebrow">DATASET READY</span>
+                    <h1>{dataset!.fileName}</h1>
+                    <p>
+                      {dataset!.rowCount.toLocaleString()} rows ·{" "}
+                      {dataset!.columnCount} columns
+                    </p>
                   </div>
-                  <small>{dataset.columnCount} fields</small>
                 </div>
 
-                <div className="columns-list">
-                  {dataset.columns.map((column, index) => (
-                    <div
-                      className="column-item"
-                      key={`${column.name}-${index}`}
-                      style={{ transitionDelay: `${index * 25}ms` }}
-                    >
-                      <span className="column-icon">#</span>
-                      <div className="column-content">
-                        <span className="column-name">{column.name}</span>
-                        <span className="column-meta">
-                          <span className="column-type">{column.type}</span>
-                          <span className="column-missing">
-                            {column.missing} missing
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className="discovery-change"
+                  onClick={() => inputRef.current?.click()}
+                  disabled={analyzing}
+                >
+                  Choose another file
+                </button>
               </div>
 
-              {/* PREVIEW */}
-              {dataset.previewRows.length > 0 && (
-                <div className="preview-card" data-reveal>
-                  <div className="section-heading">
-                    <div>
-                      <span>DATA PREVIEW</span>
-                      <h3>First records</h3>
-                    </div>
-                    <small>
-                      Showing {Math.min(dataset.previewRows.length, 20)} rows
-                    </small>
-                  </div>
-
-                  <div className="table-wrapper">
-                    <table>
+              {dataset!.previewRows.length > 0 && (
+                <div className="discovery-preview">
+                  <div className="discovery-preview-label">SMALL PREVIEW</div>
+                  <div className="discovery-preview-table-wrap">
+                    <table className="discovery-preview-table">
                       <thead>
                         <tr>
-                          {dataset.columns.map((column, index) => (
-                            <th key={`${column.name}-${index}`}>
-                              {column.name}
-                            </th>
+                          {dataset!.columns.slice(0, 5).map((column, index) => (
+                            <th key={`${column.name}-${index}`}>{column.name}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {dataset.previewRows.map((row, index) => (
-                          <tr key={index}>
-                            {dataset.columns.map((column, columnIndex) => (
+                        {dataset!.previewRows.slice(0, 3).map((row, rowIndex) => (
+                          <tr key={rowIndex}>
+                            {dataset!.columns.slice(0, 5).map((column, columnIndex) => (
                               <td key={`${column.name}-${columnIndex}`}>
                                 {formatValue(row[column.name])}
                               </td>
@@ -540,43 +501,76 @@ export default function AnalystPage() {
                 </div>
               )}
 
-              {/* NEXT STEP */}
-              <div className="analysis-cta" data-reveal>
-                <div className="cta-glow" aria-hidden="true" />
-                <div>
-                  <span className="cta-eyebrow">NEXT STEP</span>
-                  <h3>Ready to discover what matters?</h3>
-                  <p>
-                    A1.ai will analyze your dataset for patterns, trends,
-                    anomalies, and insights.
-                  </p>
-                </div>
+              <div className="discovery-divider" />
 
-                <button
-                  className="analyze-button"
-                  disabled
-                  title="Coming in the next step"
+              <div className="discovery-prompt">
+                <span className="discovery-eyebrow">DISCOVER</span>
+                <h2>What would you like to discover?</h2>
+                <p>
+                  Ask A1.ai to explore your dataset, or start with one of the
+                  focused discoveries below.
+                </p>
+
+                <form
+                  className="discovery-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const input = event.currentTarget.elements.namedItem(
+                      "discovery",
+                    ) as HTMLInputElement | null;
+                    void handleDiscover(input?.value ?? "");
+                  }}
                 >
-                  Analyze Dataset
-                  <ArrowIcon />
-                </button>
+                  <input
+                    name="discovery"
+                    placeholder="Ask anything about your data..."
+                    autoComplete="off"
+                    disabled={analyzing}
+                    aria-label="Ask anything about your data"
+                  />
+                  <button type="submit" disabled={analyzing} aria-label="Discover">
+                    {analyzing ? (
+                      <span className="discovery-spinner" />
+                    ) : (
+                      <span aria-hidden="true">↑</span>
+                    )}
+                  </button>
+                </form>
+
+                {analysisError && (
+                  <p className="discovery-error">{analysisError}</p>
+                )}
+
+                <div className="discovery-suggestions">
+                  <span>Try asking</span>
+                  {[
+                    "Give me an overview",
+                    "Find important patterns",
+                    "Find anomalies",
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => void handleDiscover(suggestion)}
+                      disabled={analyzing}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               </div>
             </section>
           )}
+
+          {error && (
+            <div className="error-card">
+              <span>!</span>
+              <p>{error}</p>
+            </div>
+          )}
         </div>
       </main>
-
-      {/* SCROLL CUE — appears once, right after a successful upload */}
-      {showScrollCue && (
-        <button
-          type="button"
-          className="scroll-cue"
-          onClick={scrollToResults}
-          aria-label="Scroll down to see the dataset results"
-        >
-          <ChevronDownIcon />
-        </button>
-      )}
+)}
     </>
   );
 }
@@ -904,9 +898,59 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 .analysis-cta h3{ margin:6px 0; font-family:var(--font-display); font-size:20px; font-weight:600; position:relative; z-index:1; }
 .analysis-cta p{ margin:0; color:var(--text-secondary); font-size:12px; line-height:1.6; position:relative; z-index:1; }
 .analyze-button{
-  flex-shrink:0; display:inline-flex; align-items:center; gap:10px; border:1px solid rgba(255,200,87,.28);
-  background:rgba(255,200,87,.08); color:var(--amber); padding:12px 18px; border-radius:10px; font-size:12px;
-  font-family:var(--font-body); font-weight:600; cursor:not-allowed; opacity:.55; position:relative; z-index:1;
+  flex-shrink:0;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+
+  border:1px solid rgba(255,200,87,.45);
+  background:linear-gradient(
+    135deg,
+    rgba(255,200,87,.16),
+    rgba(140,124,240,.14)
+  );
+
+  color:var(--amber);
+  padding:12px 18px;
+  border-radius:10px;
+  font-size:12px;
+  font-family:var(--font-body);
+  font-weight:600;
+
+  cursor:pointer;
+  opacity:1;
+
+  position:relative;
+  z-index:1;
+
+  transition:
+    transform .2s ease,
+    border-color .2s ease,
+    background .2s ease,
+    box-shadow .2s ease;
+}
+
+.analyze-button:hover:not(:disabled){
+  transform:translateY(-2px);
+  border-color:var(--amber);
+  background:linear-gradient(
+    135deg,
+    rgba(255,200,87,.22),
+    rgba(140,124,240,.18)
+  );
+
+  box-shadow:
+    0 10px 30px rgba(255,200,87,.12),
+    0 0 20px rgba(140,124,240,.08);
+}
+
+.analyze-button:active:not(:disabled){
+  transform:translateY(0);
+}
+
+.analyze-button:disabled{
+  cursor:not-allowed;
+  opacity:.45;
 }
 
 /* ---------- Scroll cue ---------- */
@@ -935,7 +979,7 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
   .upload-card{ min-height:260px; padding:24px; }
   .stats-grid{ grid-template-columns:repeat(2,1fr); }
   .analysis-cta{ flex-direction:column; align-items:flex-start; }
-  .analyze-button{ width:100%; justify-content:center; }
+  
   .dash-link span{ display:none; }
   .upload-compact{ flex-direction:column; align-items:flex-start; }
   .uc-change{ width:100%; justify-content:center; }
@@ -953,4 +997,51 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
   .scroll-cue{ animation:none !important; transform:translateX(-50%) !important; }
   .upload-card{ opacity:1 !important; transform:none !important; }
 }
+
+
+/* ---------- Post-upload discovery ---------- */
+.analyst-page-ready{min-height:calc(100vh - 68px);}
+.discovery-container{width:100%;padding-top:72px;padding-bottom:88px;}
+.discovery-card{position:relative;width:min(900px,100%);margin:0 auto;overflow:hidden;padding:34px;border:1px solid rgba(140,124,240,.24);border-radius:24px;background:radial-gradient(circle at 90% 0%,rgba(140,124,240,.12),transparent 34%),radial-gradient(circle at 0% 100%,rgba(84,232,214,.06),transparent 32%),rgba(10,15,30,.78);box-shadow:0 28px 80px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.035);}
+.discovery-glow{position:absolute;width:420px;height:220px;top:-130px;right:-80px;border-radius:50%;background:rgba(140,124,240,.18);filter:blur(70px);pointer-events:none;}
+.discovery-header,.discovery-status{display:flex;align-items:flex-start;}
+.discovery-header{position:relative;z-index:1;justify-content:space-between;gap:24px;}
+.discovery-status{gap:15px;min-width:0;}
+.discovery-check{display:grid;width:46px;height:46px;flex-shrink:0;place-items:center;border:1px solid rgba(84,232,214,.25);border-radius:14px;background:rgba(84,232,214,.09);color:var(--cyan);}
+.discovery-check svg{width:21px;height:21px;}
+.discovery-eyebrow{display:block;color:var(--cyan);font:500 9px var(--font-mono);letter-spacing:.15em;text-transform:uppercase;}
+.discovery-status h1{margin:7px 0 4px;overflow:hidden;color:var(--text-primary);font:600 27px var(--font-display);text-overflow:ellipsis;white-space:nowrap;}
+.discovery-status p{margin:0;color:var(--text-secondary);font:11px var(--font-mono);}
+.discovery-change{flex-shrink:0;padding:9px 13px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.025);color:var(--text-secondary);font:500 11px var(--font-body);cursor:pointer;transition:.2s ease;}
+.discovery-change:hover:not(:disabled){border-color:var(--border-hover);color:var(--text-primary);transform:translateY(-1px);}
+.discovery-change:disabled{opacity:.45;cursor:not-allowed;}
+.discovery-preview{position:relative;z-index:1;margin-top:28px;}
+.discovery-preview-label{margin-bottom:9px;color:var(--text-tertiary);font:500 9px var(--font-mono);letter-spacing:.14em;}
+.discovery-preview-table-wrap{overflow:hidden;border:1px solid rgba(148,163,196,.11);border-radius:13px;background:rgba(4,7,14,.5);}
+.discovery-preview-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.discovery-preview-table th,.discovery-preview-table td{max-width:0;padding:9px 11px;overflow:hidden;border-bottom:1px solid rgba(148,163,196,.07);text-align:left;text-overflow:ellipsis;white-space:nowrap;}
+.discovery-preview-table th{color:#737da0;background:rgba(255,255,255,.025);font:500 8.5px var(--font-mono);letter-spacing:.1em;text-transform:uppercase;}
+.discovery-preview-table td{color:#9da7c2;font-size:10.5px;}
+.discovery-preview-table tr:last-child td{border-bottom:0;}
+.discovery-divider{height:1px;margin:28px 0 27px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+.discovery-prompt{position:relative;z-index:1;text-align:center;}
+.discovery-prompt .discovery-eyebrow{color:var(--violet);}
+.discovery-prompt h2{margin:8px 0 7px;color:var(--text-primary);font:600 31px var(--font-display);}
+.discovery-prompt>p{max-width:600px;margin:0 auto 21px;color:var(--text-secondary);font-size:12.5px;line-height:1.6;}
+.discovery-form{display:flex;align-items:center;gap:9px;width:min(720px,100%);margin:0 auto;padding:7px;border:1px solid rgba(140,124,240,.25);border-radius:15px;background:rgba(4,7,14,.76);box-shadow:0 0 0 1px rgba(255,255,255,.015),0 12px 30px rgba(0,0,0,.18);transition:border-color .2s ease,box-shadow .2s ease;}
+.discovery-form:focus-within{border-color:rgba(140,124,240,.55);box-shadow:0 0 0 4px rgba(140,124,240,.06),0 12px 30px rgba(0,0,0,.2);}
+.discovery-form input{min-width:0;width:100%;height:42px;padding:0 12px;border:0;outline:0;background:transparent;color:var(--text-primary);font:13px var(--font-body);}
+.discovery-form input::placeholder{color:#5f6988;}
+.discovery-form button{display:grid;width:42px;height:42px;flex-shrink:0;place-items:center;border:1px solid rgba(255,200,87,.24);border-radius:11px;background:rgba(255,200,87,.08);color:var(--amber);font-size:21px;line-height:1;cursor:pointer;transition:.2s ease;}
+.discovery-form button:hover:not(:disabled){background:rgba(255,200,87,.14);border-color:rgba(255,200,87,.42);transform:translateY(-1px);}
+.discovery-form button:disabled{opacity:.5;cursor:not-allowed;}
+.discovery-spinner{width:15px;height:15px;border:2px solid rgba(255,200,87,.22);border-top-color:var(--amber);border-radius:50%;animation:discoverySpin .7s linear infinite;}
+@keyframes discoverySpin{to{transform:rotate(360deg);}}
+.discovery-error{margin:11px 0 0;color:#ff9aa6;font-size:11px;}
+.discovery-suggestions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin-top:18px;}
+.discovery-suggestions>span{color:var(--text-tertiary);font:500 9px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;}
+.discovery-suggestions button{padding:7px 11px;border:1px solid rgba(140,124,240,.18);border-radius:999px;background:rgba(140,124,240,.035);color:var(--text-secondary);font-size:10.5px;cursor:pointer;transition:.2s ease;}
+.discovery-suggestions button:hover:not(:disabled){border-color:rgba(140,124,240,.4);background:rgba(140,124,240,.08);color:var(--text-primary);transform:translateY(-1px);}
+.discovery-suggestions button:disabled{opacity:.45;cursor:not-allowed;}
+@media(max-width:700px){.analyst-page-ready{min-height:calc(100vh - 60px);}.discovery-container{padding:34px 16px 70px;}.discovery-card{padding:22px;border-radius:19px;}.discovery-header{flex-direction:column;}.discovery-change{align-self:flex-start;}.discovery-status h1{max-width:calc(100vw - 110px);font-size:22px;}.discovery-prompt h2{font-size:25px;}.discovery-form{padding:6px;}}
 `;

@@ -42,3 +42,18 @@ export type Document = Prisma.DocumentModel
  * 
  */
 export type DocumentChunk = Prisma.DocumentChunkModel
+/**
+ * Model AnalystDataset
+ * 
+ */
+export type AnalystDataset = Prisma.AnalystDatasetModel
+/**
+ * Model AnalystConversation
+ * 
+ */
+export type AnalystConversation = Prisma.AnalystConversationModel
+/**
+ * Model AnalystMessage
+ * 
+ */
+export type AnalystMessage = Prisma.AnalystMessageModel

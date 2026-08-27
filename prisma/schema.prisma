@@ -14,8 +14,9 @@ model User {
   name     String?
   imageUrl String?
 
-  chats     Chat[]
-  documents Document[]
+  chats           Chat[]
+  documents       Document[]
+  analystDatasets AnalystDataset[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -84,4 +85,58 @@ enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+}
+
+model AnalystDataset {
+  id          String   @id @default(cuid())
+  userId      String?
+
+  fileName    String
+  fileSize    Int
+  mimeType    String?
+  sheetName   String?
+
+  rowCount    Int
+  columnCount Int
+
+  columns     Json
+  rows        Json
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  conversations AnalystConversation[]
+
+  @@index([userId])
+}
+
+model AnalystConversation {
+  id        String   @id @default(cuid())
+  datasetId String
+
+  title     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dataset  AnalystDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  messages AnalystMessage[]
+
+  @@index([datasetId])
+}
+
+model AnalystMessage {
+  id             String      @id @default(cuid())
+  conversationId String
+
+  role    MessageRole
+  content String
+
+  createdAt DateTime @default(now())
+
+  conversation AnalystConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
 }

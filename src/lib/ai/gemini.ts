@@ -19,21 +19,15 @@ export async function generateWithGemini(
       parts: [{ text: message.content }],
     }));
 
-  console.log("Gemini request:", {
-  model: "gemini-3.6-flash",
-  messageCount: conversation?.length,
-  hasSystemMessage: !!systemMessage,
-});
-
-const response = await gemini.models.generateContent({
-  model: "gemini-3.6-flash",
-  contents: conversation,
-  config: systemMessage
-    ? {
-        systemInstruction: systemMessage.content,
-      }
-    : undefined,
-});
+  const response = await gemini.models.generateContent({
+    model: "gemini-3.6-flash",
+    contents: conversation,
+    config: systemMessage
+      ? {
+          systemInstruction: systemMessage.content,
+        }
+      : undefined,
+  });
 
   const text = response.text;
 
