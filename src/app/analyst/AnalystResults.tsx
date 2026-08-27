@@ -138,7 +138,9 @@ function renderMarkdown(content: string): ReactNode {
       const text = heading[1].replace(/^\*\*|\*\*$/g, "");
       const level = Math.min(heading[0].match(/^#+/)?.[0].length ?? 3, 4);
       const Tag = level <= 2 ? "h4" : "h5";
-      blocks.push(<Tag key={`heading-${index}`}>{renderInlineMarkdown(text)}</Tag>);
+      blocks.push(
+        <Tag key={`heading-${index}`}>{renderInlineMarkdown(text)}</Tag>,
+      );
       return;
     }
 
@@ -157,9 +159,7 @@ function renderMarkdown(content: string): ReactNode {
     }
 
     flushLists();
-    blocks.push(
-      <p key={`p-${index}`}>{renderInlineMarkdown(line)}</p>,
-    );
+    blocks.push(<p key={`p-${index}`}>{renderInlineMarkdown(line)}</p>);
   });
 
   flushLists();
@@ -211,7 +211,16 @@ function useReveal(root: React.RefObject<HTMLElement | null>) {
 
 function DatabaseIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <ellipse cx="12" cy="5.5" rx="8" ry="3" />
       <path d="M4 5.5V18c0 1.66 3.58 3 8 3s8-1.34 8-3V5.5" />
       <path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" />
@@ -221,7 +230,16 @@ function DatabaseIcon() {
 
 function GridIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" />
       <path d="M3.5 9.5h17M3.5 15h17M9.5 3.5v17M15 3.5v17" />
     </svg>
@@ -230,7 +248,16 @@ function GridIcon() {
 
 function HashIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M9 3 7 21M17 3l-2 18M4 8.5h17M3 15.5h17" />
     </svg>
   );
@@ -238,7 +265,16 @@ function HashIcon() {
 
 function AlertIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8v5" />
       <circle cx="12" cy="16.2" r="0.6" fill="currentColor" stroke="none" />
@@ -248,7 +284,16 @@ function AlertIcon() {
 
 function CheckShieldIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M12 3 4.5 6v6c0 4.5 3 7.5 7.5 9 4.5-1.5 7.5-4.5 7.5-9V6L12 3Z" />
       <path className="ar-check-path" d="M8.5 12.2l2.4 2.4 4.6-4.9" />
     </svg>
@@ -257,17 +302,34 @@ function CheckShieldIcon() {
 
 function TagIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M12.5 3.5H6a2.5 2.5 0 0 0-2.5 2.5v6.5L12.4 21.4a1.5 1.5 0 0 0 2.12 0l6.88-6.88a1.5 1.5 0 0 0 0-2.12L12.5 3.5Z" />
       <circle cx="8.3" cy="8.3" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-
 function ArrowIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
@@ -275,7 +337,16 @@ function ArrowIcon() {
 
 function FileIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M6 2.5h8l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V4A1.5 1.5 0 0 1 6 2.5Z" />
       <path d="M14 2.5V8h5" />
     </svg>
@@ -284,7 +355,16 @@ function FileIcon() {
 
 function CalendarIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3.5" y="5" width="17" height="16" rx="2" />
       <path d="M8 3v4M16 3v4M3.5 10h17" />
     </svg>
@@ -293,7 +373,16 @@ function CalendarIcon() {
 
 function ClockIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 7.5V12l3 2" />
     </svg>
@@ -416,263 +505,263 @@ export default function AnalystResults({
     void sendChatMessage();
   };
 
-
   return (
-    <section
-      className={`analysis-results ${isChatOpen ? "chat-open" : "chat-minimized"}`}
-      ref={rootRef}
+    <div
+      className={`analyst-shell ${isChatOpen ? "chat-open" : "chat-minimized"}`}
     >
-      <div className="ar-glow" aria-hidden="true" />
+      <section className="analysis-results" ref={rootRef}>
+        <div className="ar-glow" aria-hidden="true" />
 
-      {/* Header */}
-      <div className="results-header ar-enter">
-        <div>
-          <div className="results-eyebrow">
-            <span className="results-status-dot" />
-            ANALYSIS COMPLETE
-          </div>
-
-          <h2>Your data, understood.</h2>
-
-          {fileName && <p className="results-file-name">{fileName}</p>}
-
-          <p className="results-description">
-            A1.ai analyzed your dataset and found the following patterns
-            and statistics.
-          </p>
-        </div>
-      </div>
-
-      {/* Overview */}
-      <div className="results-overview-grid ar-enter ar-enter-2">
-        <div className="result-overview-card">
-          <div className="roc-icon roc-cyan">
-            <DatabaseIcon />
-          </div>
-          <div className="roc-body">
-            <span>ROWS</span>
-            <strong>{formatNumber(analysis.rowCount)}</strong>
-            <small>records analyzed</small>
-          </div>
-        </div>
-
-        <div className="result-overview-card">
-          <div className="roc-icon roc-violet">
-            <GridIcon />
-          </div>
-          <div className="roc-body">
-            <span>COLUMNS</span>
-            <strong>{formatNumber(analysis.columnCount)}</strong>
-            <small>fields detected</small>
-          </div>
-        </div>
-
-        <div className="result-overview-card">
-          <div className="roc-icon roc-amber">
-            <HashIcon />
-          </div>
-          <div className="roc-body">
-            <span>NUMERIC</span>
-            <strong>{analysis.numericStats.length}</strong>
-            <small>numeric fields</small>
-          </div>
-        </div>
-
-        <div className="result-overview-card">
-          <div className={`roc-icon ${totalMissing === 0 ? "roc-cyan" : "roc-danger"}`}>
-            {totalMissing === 0 ? <CheckShieldIcon /> : <AlertIcon />}
-          </div>
-          <div className="roc-body">
-            <span>MISSING</span>
-            <strong>{formatNumber(totalMissing)}</strong>
-            <small>
-              {totalMissing === 0 ? "no missing values" : "missing values found"}
-            </small>
-          </div>
-        </div>
-      </div>
-
-      {/* Numeric + Categorical analysis, paired side by side */}
-      <div
-        className={
-          hasNumeric && hasCategorical ? "results-row" : undefined
-        }
-      >
-      {hasNumeric && (
-        <div className="results-section" data-ar-reveal>
-          <div className="results-section-heading">
-            <div>
-              <span className="section-eyebrow">NUMERIC ANALYSIS</span>
-              <h3>Key metrics</h3>
+        {/* Header */}
+        <div className="results-header ar-enter">
+          <div>
+            <div className="results-eyebrow">
+              <span className="results-status-dot" />
+              ANALYSIS COMPLETE
             </div>
-            <span className="section-count">
-              {analysis.numericStats.length} field
-              {analysis.numericStats.length === 1 ? "" : "s"}
-            </span>
+
+            <h2>Your data, understood.</h2>
+
+            {fileName && <p className="results-file-name">{fileName}</p>}
+
+            <p className="results-description">
+              A1.ai analyzed your dataset and found the following patterns and
+              statistics.
+            </p>
+          </div>
+        </div>
+
+        {/* Overview */}
+        <div className="results-overview-grid ar-enter ar-enter-2">
+          <div className="result-overview-card">
+            <div className="roc-icon roc-cyan">
+              <DatabaseIcon />
+            </div>
+            <div className="roc-body">
+              <span>ROWS</span>
+              <strong>{formatNumber(analysis.rowCount)}</strong>
+              <small>records analyzed</small>
+            </div>
           </div>
 
-          <div className="numeric-results-grid">
-            {analysis.numericStats.map((stat, i) => {
-              const hasRange =
-                typeof stat.min === "number" &&
-                typeof stat.max === "number" &&
-                stat.max > stat.min;
+          <div className="result-overview-card">
+            <div className="roc-icon roc-violet">
+              <GridIcon />
+            </div>
+            <div className="roc-body">
+              <span>COLUMNS</span>
+              <strong>{formatNumber(analysis.columnCount)}</strong>
+              <small>fields detected</small>
+            </div>
+          </div>
 
-              const percent = hasRange
-                ? Math.min(
-                    100,
-                    Math.max(
-                      0,
-                      ((stat.average - (stat.min as number)) /
-                        ((stat.max as number) - (stat.min as number))) *
+          <div className="result-overview-card">
+            <div className="roc-icon roc-amber">
+              <HashIcon />
+            </div>
+            <div className="roc-body">
+              <span>NUMERIC</span>
+              <strong>{analysis.numericStats.length}</strong>
+              <small>numeric fields</small>
+            </div>
+          </div>
+
+          <div className="result-overview-card">
+            <div
+              className={`roc-icon ${totalMissing === 0 ? "roc-cyan" : "roc-danger"}`}
+            >
+              {totalMissing === 0 ? <CheckShieldIcon /> : <AlertIcon />}
+            </div>
+            <div className="roc-body">
+              <span>MISSING</span>
+              <strong>{formatNumber(totalMissing)}</strong>
+              <small>
+                {totalMissing === 0
+                  ? "no missing values"
+                  : "missing values found"}
+              </small>
+            </div>
+          </div>
+        </div>
+
+        {/* Numeric + Categorical analysis, paired side by side */}
+        <div
+          className={hasNumeric && hasCategorical ? "results-row" : undefined}
+        >
+          {hasNumeric && (
+            <div className="results-section" data-ar-reveal>
+              <div className="results-section-heading">
+                <div>
+                  <span className="section-eyebrow">NUMERIC ANALYSIS</span>
+                  <h3>Key metrics</h3>
+                </div>
+                <span className="section-count">
+                  {analysis.numericStats.length} field
+                  {analysis.numericStats.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="numeric-results-grid">
+                {analysis.numericStats.map((stat, i) => {
+                  const hasRange =
+                    typeof stat.min === "number" &&
+                    typeof stat.max === "number" &&
+                    stat.max > stat.min;
+
+                  const percent = hasRange
+                    ? Math.min(
                         100,
-                    ),
-                  )
-                : 0;
+                        Math.max(
+                          0,
+                          ((stat.average - (stat.min as number)) /
+                            ((stat.max as number) - (stat.min as number))) *
+                            100,
+                        ),
+                      )
+                    : 0;
 
-              const accent = CYCLE[i % CYCLE.length];
+                  const accent = CYCLE[i % CYCLE.length];
 
-              return (
-                <div
-                  className="numeric-result-card"
-                  key={stat.column}
-                  style={{ animationDelay: `${i * 0.06}s` }}
-                >
-                  <div className="metric-card-top">
-                    <span className={`metric-icon metric-icon-${accent}`}>
-                      <HashIcon />
-                    </span>
-                    <span className="metric-column">{stat.column}</span>
-                  </div>
-
-                  <div className="metric-main">
-                    <strong>
-                      {isCurrencyColumn(stat.column) ? "₹" : ""}
-                      {formatNumber(stat.sum)}
-                    </strong>
-                    <span>Total</span>
-                  </div>
-
-                  {hasRange && (
-                    <div className="metric-range">
-                      <div className="metric-range-track">
-                        <div
-                          className={`metric-range-fill metric-range-${accent}`}
-                          style={{ width: `${percent}%` }}
-                        />
-                        <div
-                          className={`metric-range-dot metric-range-dot-${accent}`}
-                          style={{ left: `${percent}%` }}
-                        />
+                  return (
+                    <div
+                      className="numeric-result-card"
+                      key={stat.column}
+                      style={{ animationDelay: `${i * 0.06}s` }}
+                    >
+                      <div className="metric-card-top">
+                        <span className={`metric-icon metric-icon-${accent}`}>
+                          <HashIcon />
+                        </span>
+                        <span className="metric-column">{stat.column}</span>
                       </div>
-                      <div className="metric-range-labels">
-                        <span>min {formatAverage(stat.min as number)}</span>
-                        <span>max {formatAverage(stat.max as number)}</span>
+
+                      <div className="metric-main">
+                        <strong>
+                          {isCurrencyColumn(stat.column) ? "₹" : ""}
+                          {formatNumber(stat.sum)}
+                        </strong>
+                        <span>Total</span>
                       </div>
-                    </div>
-                  )}
 
-                  <div className="metric-details">
-                    <div>
-                      <span>Average</span>
-                      <strong>{formatAverage(stat.average)}</strong>
-                    </div>
-                    <div>
-                      <span>Records</span>
-                      <strong>{stat.count}</strong>
-                    </div>
-                    <div>
-                      <span>Missing</span>
-                      <strong>{stat.missing}</strong>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Categorical analysis */}
-      {hasCategorical && (
-        <div className="results-section" data-ar-reveal>
-          <div className="results-section-heading">
-            <div>
-              <span className="section-eyebrow">CATEGORICAL ANALYSIS</span>
-              <h3>Understand your categories</h3>
-            </div>
-            <span className="section-count">
-              {analysis.categoricalStats.length} field
-              {analysis.categoricalStats.length === 1 ? "" : "s"}
-            </span>
-          </div>
-
-          <div className="categorical-results-grid">
-            {analysis.categoricalStats.map((stat, i) => (
-              <div
-                className="categorical-result-card"
-                key={stat.column}
-                style={{ animationDelay: `${i * 0.06}s` }}
-              >
-                <div className="category-card-header">
-                  <div>
-                    <span className="category-label">
-                      <TagIcon />
-                      CATEGORY
-                    </span>
-                    <h4>{stat.column}</h4>
-                  </div>
-                  <div className="unique-count">
-                    <strong>{stat.unique}</strong>
-                    <span>unique</span>
-                  </div>
-                </div>
-
-                <div className="category-stats">
-                  <span>{stat.count} records</span>
-                  <span>{stat.missing} missing</span>
-                </div>
-
-                {stat.topValues.length > 0 && (
-                  <div className="top-values">
-                    <span className="top-values-title">Top values</span>
-
-                    {stat.topValues.slice(0, 5).map((item, index) => {
-                      const share =
-                        stat.count > 0
-                          ? Math.min(100, (item.count / stat.count) * 100)
-                          : 0;
-                      const accent = CYCLE[index % CYCLE.length];
-
-                      return (
-                        <div
-                          className="top-value-row"
-                          key={`${stat.column}-${String(item.value)}-${index}`}
-                        >
-                          <div className="top-value-line">
-                            <span>{String(item.value)}</span>
-                            <strong>{item.count}</strong>
-                          </div>
-                          <div className="top-value-track">
+                      {hasRange && (
+                        <div className="metric-range">
+                          <div className="metric-range-track">
                             <div
-                              className={`top-value-fill top-value-${accent}`}
-                              style={{ width: `${share}%` }}
+                              className={`metric-range-fill metric-range-${accent}`}
+                              style={{ width: `${percent}%` }}
+                            />
+                            <div
+                              className={`metric-range-dot metric-range-dot-${accent}`}
+                              style={{ left: `${percent}%` }}
                             />
                           </div>
+                          <div className="metric-range-labels">
+                            <span>min {formatAverage(stat.min as number)}</span>
+                            <span>max {formatAverage(stat.max as number)}</span>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      </div>
+                      )}
 
-      {/* Data quality + Coming next, paired side by side */}
-      <div className="results-row">
+                      <div className="metric-details">
+                        <div>
+                          <span>Average</span>
+                          <strong>{formatAverage(stat.average)}</strong>
+                        </div>
+                        <div>
+                          <span>Records</span>
+                          <strong>{stat.count}</strong>
+                        </div>
+                        <div>
+                          <span>Missing</span>
+                          <strong>{stat.missing}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Categorical analysis */}
+          {hasCategorical && (
+            <div className="results-section" data-ar-reveal>
+              <div className="results-section-heading">
+                <div>
+                  <span className="section-eyebrow">CATEGORICAL ANALYSIS</span>
+                  <h3>Understand your categories</h3>
+                </div>
+                <span className="section-count">
+                  {analysis.categoricalStats.length} field
+                  {analysis.categoricalStats.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="categorical-results-grid">
+                {analysis.categoricalStats.map((stat, i) => (
+                  <div
+                    className="categorical-result-card"
+                    key={stat.column}
+                    style={{ animationDelay: `${i * 0.06}s` }}
+                  >
+                    <div className="category-card-header">
+                      <div>
+                        <span className="category-label">
+                          <TagIcon />
+                          CATEGORY
+                        </span>
+                        <h4>{stat.column}</h4>
+                      </div>
+                      <div className="unique-count">
+                        <strong>{stat.unique}</strong>
+                        <span>unique</span>
+                      </div>
+                    </div>
+
+                    <div className="category-stats">
+                      <span>{stat.count} records</span>
+                      <span>{stat.missing} missing</span>
+                    </div>
+
+                    {stat.topValues.length > 0 && (
+                      <div className="top-values">
+                        <span className="top-values-title">Top values</span>
+
+                        {stat.topValues.slice(0, 5).map((item, index) => {
+                          const share =
+                            stat.count > 0
+                              ? Math.min(100, (item.count / stat.count) * 100)
+                              : 0;
+                          const accent = CYCLE[index % CYCLE.length];
+
+                          return (
+                            <div
+                              className="top-value-row"
+                              key={`${stat.column}-${String(item.value)}-${index}`}
+                            >
+                              <div className="top-value-line">
+                                <span>{String(item.value)}</span>
+                                <strong>{item.count}</strong>
+                              </div>
+                              <div className="top-value-track">
+                                <div
+                                  className={`top-value-fill top-value-${accent}`}
+                                  style={{ width: `${share}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Data quality */}
         <div className="results-section" data-ar-reveal>
           <div className="results-section-heading">
             <div>
@@ -702,151 +791,151 @@ export default function AnalystResults({
           </div>
         </div>
 
-        {isChatOpen ? (
-          <aside className="ai-chat-panel" aria-label="AI data analyst chat">
-            <div className="ai-chat-glow" aria-hidden="true" />
+        {/* Meta footer */}
+        <div className="results-meta ar-enter">
+          {fileName && (
+            <span>
+              <FileIcon />
+              {fileName}
+            </span>
+          )}
+          {analyzedLabel && (
+            <span>
+              <CalendarIcon />
+              Analyzed on {analyzedLabel}
+            </span>
+          )}
+          {typeof durationSeconds === "number" && (
+            <span>
+              <ClockIcon />
+              Analysis completed in {durationSeconds.toFixed(1)}s
+            </span>
+          )}
+        </div>
+      </section>
 
-            <div className="ai-chat-topbar">
-              <div className="ai-chat-title">
-                <span className="ai-chat-spark">✦</span>
-                <span>AI ANALYST</span>
-              </div>
-              <div className="ai-chat-actions">
-                <span className="ai-chat-live">
-                  <span />
-                  READY
-                </span>
-                <button
-                  type="button"
-                  className="ai-chat-minimize"
-                  onClick={() => setIsChatOpen(false)}
-                  aria-label="Minimize AI analyst"
-                  title="Minimize"
-                >
-                  <span aria-hidden="true">−</span>
-                </button>
-              </div>
+      {isChatOpen ? (
+        <aside className="ai-chat-panel" aria-label="AI data analyst chat">
+          <div className="ai-chat-glow" aria-hidden="true" />
+
+          <div className="ai-chat-topbar">
+            <div className="ai-chat-title">
+              <span className="ai-chat-spark">✦</span>
+              <span>AI ANALYST</span>
             </div>
-
-            <div className="ai-chat-header">
-              <div>
-                <h3>Ask your data anything.</h3>
-                <p>
-                  Ask questions about the dataset, metrics, categories, trends,
-                  or anything visible in this analysis.
-                </p>
-              </div>
-            </div>
-
-            <div className="ai-chat-messages" aria-live="polite">
-              {chatMessages.length === 0 ? (
-                <div className="ai-chat-empty">
-                  <div className="ai-chat-empty-icon">✦</div>
-                  <strong>What would you like to know?</strong>
-                  <span>Try one of these questions:</span>
-
-                  <div className="ai-chat-suggestions">
-                    {[
-                      "Which product has the highest number of records?",
-                      "Which region has the most records?",
-                      "What is the total revenue?",
-                      "Summarize the key findings.",
-                    ].map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => void sendChatMessage(suggestion)}
-                        disabled={chatLoading}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                chatMessages.map((message, index) => (
-                  <div
-                    className={`ai-chat-message ai-chat-message-${message.role}`}
-                    key={`${message.role}-${index}`}
-                  >
-                    <span className="ai-chat-message-label">
-                      {message.role === "user" ? "YOU" : "A1.AI"}
-                    </span>
-                    <div>{renderMarkdown(message.content)}</div>
-                  </div>
-                ))
-              )}
-
-              {chatLoading && (
-                <div className="ai-chat-message ai-chat-message-assistant">
-                  <span className="ai-chat-message-label">A1.AI</span>
-                  <div className="ai-chat-thinking">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {chatError && <p className="ai-chat-error">{chatError}</p>}
-
-            <form className="ai-chat-form" onSubmit={handleChatSubmit}>
-              <input
-                value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder="Ask anything about your data..."
-                disabled={chatLoading}
-                aria-label="Ask a question about your data"
-              />
+            <div className="ai-chat-actions">
+              <span className="ai-chat-live">
+                <span />
+                READY
+              </span>
               <button
-                type="submit"
-                disabled={!chatInput.trim() || chatLoading}
-                aria-label="Send question"
+                type="button"
+                className="ai-chat-minimize"
+                onClick={() => setIsChatOpen(false)}
+                aria-label="Minimize AI analyst"
+                title="Minimize"
               >
-                <ArrowIcon />
+                <span aria-hidden="true">−</span>
               </button>
-            </form>
+            </div>
+          </div>
 
-            <p className="ai-chat-note">
-              Answers are generated from the analysis currently shown above.
-            </p>
-          </aside>
-        ) : (
-          <button
-            type="button"
-            className="ai-chat-fab"
-            onClick={() => setIsChatOpen(true)}
-            aria-label="Open AI analyst"
-            title="Open AI analyst"
-          >
-            <span className="ai-chat-fab-spark">✦</span>
-            <span className="ai-chat-fab-label">Ask A1.ai</span>
-          </button>
-        )}
-      </div>
+          <div className="ai-chat-header">
+            <div>
+              <h3>Ask your data anything.</h3>
+              <p>
+                Ask questions about the dataset, metrics, categories, trends, or
+                anything visible in this analysis.
+              </p>
+            </div>
+          </div>
 
-      {/* Meta footer */}
-      <div className="results-meta ar-enter">
-        {fileName && (
-          <span>
-            <FileIcon />
-            {fileName}
-          </span>
-        )}
-        {analyzedLabel && (
-          <span>
-            <CalendarIcon />
-            Analyzed on {analyzedLabel}
-          </span>
-        )}
-        {typeof durationSeconds === "number" && (
-          <span>
-            <ClockIcon />
-            Analysis completed in {durationSeconds.toFixed(1)}s
-          </span>
-        )}
-      </div>
-    </section>
+          <div className="ai-chat-messages" aria-live="polite">
+            {chatMessages.length === 0 ? (
+              <div className="ai-chat-empty">
+                <div className="ai-chat-empty-icon">✦</div>
+                <strong>What would you like to know?</strong>
+                <span>Try one of these questions:</span>
+
+                <div className="ai-chat-suggestions">
+                  {[
+                    "Which product has the highest number of records?",
+                    "Which region has the most records?",
+                    "What is the total revenue?",
+                    "Summarize the key findings.",
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => void sendChatMessage(suggestion)}
+                      disabled={chatLoading}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              chatMessages.map((message, index) => (
+                <div
+                  className={`ai-chat-message ai-chat-message-${message.role}`}
+                  key={`${message.role}-${index}`}
+                >
+                  <span className="ai-chat-message-label">
+                    {message.role === "user" ? "YOU" : "A1.AI"}
+                  </span>
+                  <div>{renderMarkdown(message.content)}</div>
+                </div>
+              ))
+            )}
+
+            {chatLoading && (
+              <div className="ai-chat-message ai-chat-message-assistant">
+                <span className="ai-chat-message-label">A1.AI</span>
+                <div className="ai-chat-thinking">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {chatError && <p className="ai-chat-error">{chatError}</p>}
+
+          <form className="ai-chat-form" onSubmit={handleChatSubmit}>
+            <input
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              placeholder="Ask anything about your data..."
+              disabled={chatLoading}
+              aria-label="Ask a question about your data"
+            />
+            <button
+              type="submit"
+              disabled={!chatInput.trim() || chatLoading}
+              aria-label="Send question"
+            >
+              <ArrowIcon />
+            </button>
+          </form>
+
+          <p className="ai-chat-note">
+            Answers are generated from the analysis currently shown above.
+          </p>
+        </aside>
+      ) : (
+        <button
+          type="button"
+          className="ai-chat-fab"
+          onClick={() => setIsChatOpen(true)}
+          aria-label="Open AI analyst"
+          title="Open AI analyst"
+        >
+          <span className="ai-chat-fab-spark">✦</span>
+          <span className="ai-chat-fab-label">Ask A1.ai</span>
+        </button>
+      )}
+    </div>
   );
 }

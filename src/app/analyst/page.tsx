@@ -137,6 +137,73 @@ function CheckBadgeIcon() {
   );
 }
 
+function SparkleIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+    >
+      <path d="M12 2.5c.3 3.4 1.1 5.7 2.4 7 1.3 1.3 3.6 2.1 7 2.4-3.4.3-5.7 1.1-7 2.4-1.3 1.3-2.1 3.6-2.4 7-.3-3.4-1.1-5.7-2.4-7-1.3-1.3-3.6-2.1-7-2.4 3.4-.3 5.7-1.1 7-2.4 1.3-1.3 2.1-3.6 2.4-7Z" />
+    </svg>
+  );
+}
+
+function RowsIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M3.5 10h17M3.5 15.5h17" />
+    </svg>
+  );
+}
+
+function ColumnsIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M9.5 4v16M14.5 4v16" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Main component                                                       */
 /* ------------------------------------------------------------------ */
@@ -445,21 +512,36 @@ export default function AnalystPage() {
               )}
             </div>
           ) : (
-            <section className="discovery-card" data-reveal>
+            <section className={`discovery-card ${analyzing ? "is-analyzing" : ""}`} data-reveal>
+              <span className="discovery-border-glow" aria-hidden="true" />
               <div className="discovery-glow" aria-hidden="true" />
+              <div className="discovery-glow discovery-glow-2" aria-hidden="true" />
+              <span className="discovery-orb do1" aria-hidden="true" />
+              <span className="discovery-orb do2" aria-hidden="true" />
 
-              <div className="discovery-header">
+              <div className="discovery-header" data-reveal-child style={{ ["--d" as any]: "0ms" }}>
                 <div className="discovery-status">
                   <span className="discovery-check">
+                    <span className="discovery-check-ring" />
                     <CheckBadgeIcon />
                   </span>
-                  <div>
-                    <span className="discovery-eyebrow">DATASET READY</span>
-                    <h1>{dataset!.fileName}</h1>
-                    <p>
-                      {dataset!.rowCount.toLocaleString()} rows ·{" "}
-                      {dataset!.columnCount} columns
-                    </p>
+                  <div className="discovery-status-text">
+                    <span className="discovery-eyebrow">
+                      <span className="eyebrow-dot" />
+                      DATASET READY
+                    </span>
+                    <h1 title={dataset!.fileName}>{dataset!.fileName}</h1>
+                    <div className="discovery-stats">
+                      <span className="discovery-stat">
+                        <RowsIcon />
+                        {dataset!.rowCount.toLocaleString()} rows
+                      </span>
+                      <span className="discovery-stat-sep" />
+                      <span className="discovery-stat">
+                        <ColumnsIcon />
+                        {dataset!.columnCount} columns
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -474,12 +556,16 @@ export default function AnalystPage() {
               </div>
 
               {dataset!.previewRows.length > 0 && (
-                <div className="discovery-preview">
-                  <div className="discovery-preview-label">SMALL PREVIEW</div>
+                <div className="discovery-preview" data-reveal-child style={{ ["--d" as any]: "90ms" }}>
+                  <div className="discovery-preview-label">
+                    <span className="label-line" />
+                    SMALL PREVIEW
+                  </div>
                   <div className="discovery-preview-table-wrap">
                     <table className="discovery-preview-table">
                       <thead>
                         <tr>
+                          <th className="idx-col" aria-hidden="true" />
                           {dataset!.columns.slice(0, 5).map((column, index) => (
                             <th key={`${column.name}-${index}`}>{column.name}</th>
                           ))}
@@ -487,7 +573,8 @@ export default function AnalystPage() {
                       </thead>
                       <tbody>
                         {dataset!.previewRows.slice(0, 3).map((row, rowIndex) => (
-                          <tr key={rowIndex}>
+                          <tr key={rowIndex} style={{ ["--ri" as any]: rowIndex }}>
+                            <td className="idx-col">{rowIndex + 1}</td>
                             {dataset!.columns.slice(0, 5).map((column, columnIndex) => (
                               <td key={`${column.name}-${columnIndex}`}>
                                 {formatValue(row[column.name])}
@@ -501,11 +588,12 @@ export default function AnalystPage() {
                 </div>
               )}
 
-              <div className="discovery-divider" />
+              <div className="discovery-divider" data-reveal-child style={{ ["--d" as any]: "150ms" }} />
 
-              <div className="discovery-prompt">
-                <span className="discovery-eyebrow">DISCOVER</span>
-                <h2>What would you like to discover?</h2>
+              <div className="discovery-prompt" data-reveal-child style={{ ["--d" as any]: "190ms" }}>
+                <h2>
+                  What would you like to <span className="grad-text-2">discover</span>?
+                </h2>
                 <p>
                   Ask A1.ai to explore your dataset, or start with one of the
                   focused discoveries below.
@@ -521,6 +609,9 @@ export default function AnalystPage() {
                     void handleDiscover(input?.value ?? "");
                   }}
                 >
+                  <span className="discovery-form-icon" aria-hidden="true">
+                    <SparkleIcon />
+                  </span>
                   <input
                     name="discovery"
                     placeholder="Ask anything about your data..."
@@ -532,10 +623,21 @@ export default function AnalystPage() {
                     {analyzing ? (
                       <span className="discovery-spinner" />
                     ) : (
-                      <span aria-hidden="true">↑</span>
+                      <SendIcon />
                     )}
                   </button>
                 </form>
+
+                {analyzing && (
+                  <p className="discovery-thinking">
+                    <span className="thinking-dots">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                    Analyzing your dataset...
+                  </p>
+                )}
 
                 {analysisError && (
                   <p className="discovery-error">{analysisError}</p>
@@ -547,13 +649,15 @@ export default function AnalystPage() {
                     "Give me an overview",
                     "Find important patterns",
                     "Find anomalies",
-                  ].map((suggestion) => (
+                  ].map((suggestion, i) => (
                     <button
                       key={suggestion}
                       type="button"
+                      style={{ ["--i" as any]: i }}
                       onClick={() => void handleDiscover(suggestion)}
                       disabled={analyzing}
                     >
+                      <SparkleIcon />
                       {suggestion}
                     </button>
                   ))}
@@ -1001,47 +1105,204 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 
 /* ---------- Post-upload discovery ---------- */
 .analyst-page-ready{min-height:calc(100vh - 68px);}
-.discovery-container{width:100%;padding-top:72px;padding-bottom:88px;}
-.discovery-card{position:relative;width:min(900px,100%);margin:0 auto;overflow:hidden;padding:34px;border:1px solid rgba(140,124,240,.24);border-radius:24px;background:radial-gradient(circle at 90% 0%,rgba(140,124,240,.12),transparent 34%),radial-gradient(circle at 0% 100%,rgba(84,232,214,.06),transparent 32%),rgba(10,15,30,.78);box-shadow:0 28px 80px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.035);}
-.discovery-glow{position:absolute;width:420px;height:220px;top:-130px;right:-80px;border-radius:50%;background:rgba(140,124,240,.18);filter:blur(70px);pointer-events:none;}
+.discovery-container{width:100%;padding-top:28px;padding-bottom:32px;}
+
+/* card shell — glass panel with animated conic-gradient border */
+.discovery-card{
+  position:relative; width:min(900px,100%); margin:0 auto; overflow:hidden;
+  padding:26px 32px; border-radius:24px;
+  background:
+    radial-gradient(circle at 88% -6%, rgba(140,124,240,.14), transparent 38%),
+    radial-gradient(circle at 4% 108%, rgba(84,232,214,.08), transparent 36%),
+    linear-gradient(180deg, rgba(16,21,38,.92), rgba(8,11,22,.92));
+  box-shadow:
+    0 32px 90px rgba(0,0,0,.38),
+    0 1px 0 rgba(255,255,255,.04) inset,
+    0 0 0 1px rgba(148,163,196,.1);
+  animation: cardRise .7s cubic-bezier(.16,1,.3,1) both;
+  backdrop-filter: blur(20px);
+}
+@keyframes cardRise{ from{ opacity:0; transform:translateY(18px) scale(.985); } to{ opacity:1; transform:translateY(0) scale(1); } }
+
+/* slow-rotating gradient hairline border */
+.discovery-border-glow{
+  position:absolute; inset:0; border-radius:26px; padding:1px; pointer-events:none; z-index:0;
+  background:conic-gradient(from var(--rot,0deg), rgba(140,124,240,.55), rgba(84,232,214,.35), rgba(255,200,87,.4), rgba(140,124,240,.55));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  opacity:.55; animation:borderRotate 9s linear infinite;
+}
+@keyframes borderRotate{ to{ --rot:360deg; } }
+@property --rot{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
+
+.discovery-glow{ position:absolute; width:440px; height:240px; top:-140px; right:-90px; border-radius:50%; background:rgba(140,124,240,.2); filter:blur(75px); pointer-events:none; z-index:0; animation:glowDrift 12s ease-in-out infinite; }
+.discovery-glow-2{ top:auto; right:auto; bottom:-160px; left:-100px; width:380px; height:260px; background:rgba(84,232,214,.14); animation-delay:-6s; }
+@keyframes glowDrift{ 0%,100%{ transform:translate(0,0) scale(1);} 50%{ transform:translate(-14px,16px) scale(1.08);} }
+
+.discovery-orb{ position:absolute; z-index:0; border-radius:50%; pointer-events:none; }
+.do1{ width:5px; height:5px; top:22%; right:14%; background:var(--cyan); box-shadow:0 0 14px 2px rgba(84,232,214,.8); animation:orbFloat 5s ease-in-out infinite; }
+.do2{ width:4px; height:4px; bottom:30%; left:10%; background:var(--amber); box-shadow:0 0 12px 2px rgba(255,200,87,.75); animation:orbFloat 6.5s ease-in-out infinite reverse; }
+@keyframes orbFloat{ 0%,100%{ transform:translateY(0) translateX(0); opacity:.7;} 50%{ transform:translateY(-16px) translateX(8px); opacity:1;} }
+
+/* staggered reveal for the card's own children */
+[data-reveal-child]{ opacity:0; transform:translateY(10px); animation:childIn .6s cubic-bezier(.16,1,.3,1) forwards; animation-delay:var(--d,0ms); }
+@keyframes childIn{ to{ opacity:1; transform:translateY(0); } }
+
 .discovery-header,.discovery-status{display:flex;align-items:flex-start;}
 .discovery-header{position:relative;z-index:1;justify-content:space-between;gap:24px;}
-.discovery-status{gap:15px;min-width:0;}
-.discovery-check{display:grid;width:46px;height:46px;flex-shrink:0;place-items:center;border:1px solid rgba(84,232,214,.25);border-radius:14px;background:rgba(84,232,214,.09);color:var(--cyan);}
-.discovery-check svg{width:21px;height:21px;}
-.discovery-eyebrow{display:block;color:var(--cyan);font:500 9px var(--font-mono);letter-spacing:.15em;text-transform:uppercase;}
-.discovery-status h1{margin:7px 0 4px;overflow:hidden;color:var(--text-primary);font:600 27px var(--font-display);text-overflow:ellipsis;white-space:nowrap;}
-.discovery-status p{margin:0;color:var(--text-secondary);font:11px var(--font-mono);}
-.discovery-change{flex-shrink:0;padding:9px 13px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.025);color:var(--text-secondary);font:500 11px var(--font-body);cursor:pointer;transition:.2s ease;}
-.discovery-change:hover:not(:disabled){border-color:var(--border-hover);color:var(--text-primary);transform:translateY(-1px);}
+.discovery-status{gap:16px;min-width:0;}
+.discovery-status-text{min-width:0;}
+
+.discovery-check{
+  position:relative; display:grid; width:48px; height:48px; flex-shrink:0; place-items:center;
+  border:1px solid rgba(84,232,214,.3); border-radius:15px;
+  background:linear-gradient(150deg, rgba(84,232,214,.16), rgba(84,232,214,.04));
+  color:var(--cyan); box-shadow:0 8px 20px -8px rgba(84,232,214,.5), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.discovery-check svg{ width:22px; height:22px; }
+.discovery-check-ring{ position:absolute; inset:-1px; border-radius:15px; border:1px solid rgba(84,232,214,.5); animation:checkPulse 2.2s ease-out infinite; }
+@keyframes checkPulse{ 0%{ transform:scale(1); opacity:.7; } 100%{ transform:scale(1.35); opacity:0; } }
+.check-path{ stroke-dasharray:20; stroke-dashoffset:20; animation:checkDraw .5s .25s ease-out forwards; }
+@keyframes checkDraw{ to{ stroke-dashoffset:0; } }
+
+.discovery-eyebrow{ display:inline-flex; align-items:center; gap:6px; color:var(--cyan); font:600 9.5px var(--font-mono); letter-spacing:.16em; text-transform:uppercase; }
+.eyebrow-dot{ width:5px; height:5px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 0 rgba(84,232,214,.6); animation:pulseDot 2s ease-out infinite; }
+.discovery-eyebrow-center{ color:var(--violet); }
+.discovery-eyebrow-center svg{ color:var(--violet); }
+
+.discovery-status h1{
+  margin:6px 0 7px; overflow:hidden; letter-spacing:-.01em;
+  background:linear-gradient(120deg, var(--text-primary) 55%, var(--violet) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  font:600 27px var(--font-display); text-overflow:ellipsis; white-space:nowrap;
+}
+.discovery-stats{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.discovery-stat{
+  display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:8px;
+  background:rgba(255,255,255,.035); border:1px solid var(--border); color:var(--text-secondary);
+  font:500 10.5px var(--font-mono); letter-spacing:.02em;
+}
+.discovery-stat svg{ color:var(--text-tertiary); }
+.discovery-stat-sep{ width:3px; height:3px; border-radius:50%; background:var(--text-tertiary); opacity:.5; }
+
+.discovery-change{
+  position:relative; flex-shrink:0; padding:10px 15px; border:1px solid var(--border); border-radius:11px;
+  background:rgba(255,255,255,.03); color:var(--text-secondary); font:600 11.5px var(--font-body);
+  cursor:pointer; transition:border-color .2s ease, color .2s ease, transform .18s ease, background .2s ease;
+  overflow:hidden;
+}
+.discovery-change::after{ content:""; position:absolute; inset:0; background:linear-gradient(120deg, transparent, rgba(140,124,240,.16), transparent); transform:translateX(-120%); transition:transform .5s ease; }
+.discovery-change:hover:not(:disabled){ border-color:var(--border-hover); color:var(--text-primary); transform:translateY(-2px); background:rgba(140,124,240,.06); }
+.discovery-change:hover:not(:disabled)::after{ transform:translateX(120%); }
 .discovery-change:disabled{opacity:.45;cursor:not-allowed;}
-.discovery-preview{position:relative;z-index:1;margin-top:28px;}
-.discovery-preview-label{margin-bottom:9px;color:var(--text-tertiary);font:500 9px var(--font-mono);letter-spacing:.14em;}
-.discovery-preview-table-wrap{overflow:hidden;border:1px solid rgba(148,163,196,.11);border-radius:13px;background:rgba(4,7,14,.5);}
+
+.discovery-preview{position:relative;z-index:1;margin-top:18px;}
+.discovery-preview-label{ display:flex; align-items:center; gap:10px; margin-bottom:8px; color:var(--text-tertiary); font:600 9px var(--font-mono); letter-spacing:.16em; }
+.label-line{ height:1px; width:20px; background:linear-gradient(90deg, var(--text-tertiary), transparent); }
+.discovery-preview-table-wrap{
+  overflow:hidden; border:1px solid rgba(148,163,196,.12); border-radius:14px;
+  background:rgba(4,7,14,.55); box-shadow:0 14px 34px -18px rgba(0,0,0,.6);
+}
 .discovery-preview-table{width:100%;border-collapse:collapse;table-layout:fixed;}
-.discovery-preview-table th,.discovery-preview-table td{max-width:0;padding:9px 11px;overflow:hidden;border-bottom:1px solid rgba(148,163,196,.07);text-align:left;text-overflow:ellipsis;white-space:nowrap;}
-.discovery-preview-table th{color:#737da0;background:rgba(255,255,255,.025);font:500 8.5px var(--font-mono);letter-spacing:.1em;text-transform:uppercase;}
-.discovery-preview-table td{color:#9da7c2;font-size:10.5px;}
+.discovery-preview-table th,.discovery-preview-table td{max-width:0;padding:8px 13px;overflow:hidden;border-bottom:1px solid rgba(148,163,196,.07);text-align:left;text-overflow:ellipsis;white-space:nowrap;}
+.discovery-preview-table th{ color:#8891b3; background:rgba(255,255,255,.03); font:600 8.5px var(--font-mono); letter-spacing:.11em; text-transform:uppercase; }
+.discovery-preview-table td{color:#b1bad6;font-size:11px; transition:color .2s ease;}
+.discovery-preview-table th.idx-col, .discovery-preview-table td.idx-col{ width:34px; max-width:34px; padding-right:0; color:var(--text-tertiary); font-family:var(--font-mono); font-size:9.5px; }
 .discovery-preview-table tr:last-child td{border-bottom:0;}
-.discovery-divider{height:1px;margin:28px 0 27px;background:linear-gradient(90deg,transparent,var(--border),transparent);}
+.discovery-preview-table tbody tr{ position:relative; animation:rowIn .5s cubic-bezier(.16,1,.3,1) both; animation-delay:calc(var(--ri,0) * 70ms + 250ms); transition:background .2s ease; }
+.discovery-preview-table tbody tr:hover{ background:rgba(140,124,240,.05); }
+.discovery-preview-table tbody tr:hover td{ color:var(--text-primary); }
+@keyframes rowIn{ from{ opacity:0; transform:translateX(-6px); } to{ opacity:1; transform:translateX(0); } }
+
+.discovery-divider{ position:relative; z-index:1; height:1px; margin:18px 0 16px; background:linear-gradient(90deg,transparent,var(--border) 20%,var(--border) 80%,transparent); overflow:visible; }
+.discovery-divider::after{ content:""; position:absolute; top:-1.5px; left:50%; width:5px; height:4px; border-radius:50%; background:var(--violet); box-shadow:0 0 10px 2px rgba(140,124,240,.7); }
+
 .discovery-prompt{position:relative;z-index:1;text-align:center;}
-.discovery-prompt .discovery-eyebrow{color:var(--violet);}
-.discovery-prompt h2{margin:8px 0 7px;color:var(--text-primary);font:600 31px var(--font-display);}
-.discovery-prompt>p{max-width:600px;margin:0 auto 21px;color:var(--text-secondary);font-size:12.5px;line-height:1.6;}
-.discovery-form{display:flex;align-items:center;gap:9px;width:min(720px,100%);margin:0 auto;padding:7px;border:1px solid rgba(140,124,240,.25);border-radius:15px;background:rgba(4,7,14,.76);box-shadow:0 0 0 1px rgba(255,255,255,.015),0 12px 30px rgba(0,0,0,.18);transition:border-color .2s ease,box-shadow .2s ease;}
-.discovery-form:focus-within{border-color:rgba(140,124,240,.55);box-shadow:0 0 0 4px rgba(140,124,240,.06),0 12px 30px rgba(0,0,0,.2);}
-.discovery-form input{min-width:0;width:100%;height:42px;padding:0 12px;border:0;outline:0;background:transparent;color:var(--text-primary);font:13px var(--font-body);}
+.discovery-prompt h2{ margin:0 0 8px; color:var(--text-primary); font:600 28px var(--font-display); letter-spacing:-.01em; }
+.grad-text-2{
+  background:linear-gradient(100deg, var(--violet), var(--cyan) 55%, var(--amber));
+  background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:gradShift 5s ease-in-out infinite;
+}
+@keyframes gradShift{ 0%,100%{ background-position:0% center; } 50%{ background-position:100% center; } }
+.discovery-prompt>p{max-width:600px;margin:0 auto 18px;color:var(--text-secondary);font-size:12.5px;line-height:1.6;}
+
+.discovery-form{
+  position:relative; display:flex; align-items:center; gap:8px; width:min(720px,100%); margin:0 auto;
+  padding:7px 7px 7px 5px; border-radius:16px; background:rgba(4,7,14,.8);
+  border:1px solid rgba(140,124,240,.28);
+  box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 16px 40px -14px rgba(0,0,0,.55);
+  transition:border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+}
+.discovery-form:focus-within{ border-color:rgba(140,124,240,.6); box-shadow:0 0 0 5px rgba(140,124,240,.08), 0 16px 40px -14px rgba(0,0,0,.6); transform:translateY(-1px); }
+.discovery-form-icon{ display:grid; place-items:center; width:30px; height:30px; flex-shrink:0; margin-left:2px; color:var(--violet); opacity:.7; }
+.discovery-form input{min-width:0;width:100%;height:40px;padding:0 4px;border:0;outline:0;background:transparent;color:var(--text-primary);font:13.5px var(--font-body);}
 .discovery-form input::placeholder{color:#5f6988;}
-.discovery-form button{display:grid;width:42px;height:42px;flex-shrink:0;place-items:center;border:1px solid rgba(255,200,87,.24);border-radius:11px;background:rgba(255,200,87,.08);color:var(--amber);font-size:21px;line-height:1;cursor:pointer;transition:.2s ease;}
-.discovery-form button:hover:not(:disabled){background:rgba(255,200,87,.14);border-color:rgba(255,200,87,.42);transform:translateY(-1px);}
+.discovery-form button{
+  position:relative; display:grid; width:40px; height:40px; flex-shrink:0; place-items:center; border-radius:11px;
+  border:1px solid rgba(255,200,87,.3);
+  background:linear-gradient(135deg, rgba(255,200,87,.22), rgba(140,124,240,.16));
+  color:var(--amber); cursor:pointer; overflow:hidden;
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.discovery-form button:hover:not(:disabled){ background:linear-gradient(135deg, rgba(255,200,87,.3), rgba(140,124,240,.22)); border-color:var(--amber); transform:translateY(-2px) scale(1.03); box-shadow:0 10px 26px -8px rgba(255,200,87,.5); }
+.discovery-form button:active:not(:disabled){ transform:translateY(0) scale(.98); }
 .discovery-form button:disabled{opacity:.5;cursor:not-allowed;}
-.discovery-spinner{width:15px;height:15px;border:2px solid rgba(255,200,87,.22);border-top-color:var(--amber);border-radius:50%;animation:discoverySpin .7s linear infinite;}
+.discovery-spinner{width:16px;height:16px;border:2px solid rgba(255,200,87,.22);border-top-color:var(--amber);border-radius:50%;animation:discoverySpin .7s linear infinite;}
 @keyframes discoverySpin{to{transform:rotate(360deg);}}
-.discovery-error{margin:11px 0 0;color:#ff9aa6;font-size:11px;}
-.discovery-suggestions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin-top:18px;}
-.discovery-suggestions>span{color:var(--text-tertiary);font:500 9px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;}
-.discovery-suggestions button{padding:7px 11px;border:1px solid rgba(140,124,240,.18);border-radius:999px;background:rgba(140,124,240,.035);color:var(--text-secondary);font-size:10.5px;cursor:pointer;transition:.2s ease;}
-.discovery-suggestions button:hover:not(:disabled){border-color:rgba(140,124,240,.4);background:rgba(140,124,240,.08);color:var(--text-primary);transform:translateY(-1px);}
-.discovery-suggestions button:disabled{opacity:.45;cursor:not-allowed;}
-@media(max-width:700px){.analyst-page-ready{min-height:calc(100vh - 60px);}.discovery-container{padding:34px 16px 70px;}.discovery-card{padding:22px;border-radius:19px;}.discovery-header{flex-direction:column;}.discovery-change{align-self:flex-start;}.discovery-status h1{max-width:calc(100vw - 110px);font-size:22px;}.discovery-prompt h2{font-size:25px;}.discovery-form{padding:6px;}}
+
+.discovery-thinking{ display:flex; align-items:center; justify-content:center; gap:9px; margin:14px 0 0; color:var(--text-tertiary); font:500 11px var(--font-mono); letter-spacing:.02em; }
+.thinking-dots{ display:inline-flex; gap:4px; }
+.thinking-dots span{ width:4px; height:4px; border-radius:50%; background:var(--violet); animation:thinkBounce 1.1s ease-in-out infinite; }
+.thinking-dots span:nth-child(2){ animation-delay:.15s; }
+.thinking-dots span:nth-child(3){ animation-delay:.3s; }
+@keyframes thinkBounce{ 0%,80%,100%{ transform:translateY(0); opacity:.4; } 40%{ transform:translateY(-4px); opacity:1; } }
+
+.discovery-error{margin:12px 0 0;color:#ff9aa6;font-size:11.5px;}
+
+.discovery-suggestions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px;margin-top:16px;}
+.discovery-suggestions>span{color:var(--text-tertiary);font:600 9px var(--font-mono);letter-spacing:.13em;text-transform:uppercase;}
+.discovery-suggestions button{
+  position:relative; display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:999px;
+  border:1px solid rgba(140,124,240,.22); background:rgba(140,124,240,.045); color:var(--text-secondary);
+  font-size:11px; font-weight:500; cursor:pointer; overflow:hidden;
+  transition:border-color .22s ease, background .22s ease, color .22s ease, transform .22s ease, box-shadow .22s ease;
+  opacity:0; transform:translateY(10px) scale(.92); animation:chipIn .55s cubic-bezier(.34,1.4,.4,1) forwards, chipGlow 3.4s ease-in-out infinite;
+  animation-delay:calc(var(--i,0) * 110ms + 380ms), calc(var(--i,0) * 110ms + 1400ms);
+}
+.discovery-suggestions button::before{
+  content:""; position:absolute; inset:0; border-radius:999px; padding:1px;
+  background:conic-gradient(from 0deg, transparent, rgba(140,124,240,.55), transparent 35%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  opacity:0; transition:opacity .3s ease; animation:chipSweep 3.4s linear infinite; animation-delay:calc(var(--i,0) * 110ms + 1400ms);
+}
+.discovery-suggestions button svg{ color:var(--violet); opacity:.85; transition:transform .3s ease; animation:chipTwinkle 2.6s ease-in-out infinite; animation-delay:calc(var(--i,0) * 250ms); }
+@keyframes chipIn{ 60%{ opacity:1; transform:translateY(-2px) scale(1.03); } to{ opacity:1; transform:translateY(0) scale(1); } }
+@keyframes chipGlow{ 0%,100%{ box-shadow:0 0 0 0 rgba(140,124,240,0); } 50%{ box-shadow:0 0 16px -2px rgba(140,124,240,.28); } }
+@keyframes chipSweep{ 0%{ opacity:0; } 8%{ opacity:.9; } 40%{ opacity:0; } 100%{ opacity:0; } }
+@keyframes chipTwinkle{ 0%,100%{ transform:scale(1); opacity:.6; } 50%{ transform:scale(1.25); opacity:1; } }
+.discovery-suggestions button:hover:not(:disabled){ border-color:rgba(140,124,240,.55); background:rgba(140,124,240,.12); color:var(--text-primary); transform:translateY(-3px) scale(1.03); box-shadow:0 12px 28px -10px rgba(140,124,240,.5); }
+.discovery-suggestions button:hover:not(:disabled) svg{ transform:rotate(90deg) scale(1.2); animation-play-state:paused; }
+.discovery-suggestions button:disabled{opacity:.4;cursor:not-allowed;}
+
+.is-analyzing .discovery-form{ animation:formPulse 1.6s ease-in-out infinite; }
+@keyframes formPulse{ 0%,100%{ box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 16px 40px -14px rgba(0,0,0,.55); } 50%{ box-shadow:0 0 0 5px rgba(140,124,240,.1), 0 16px 40px -14px rgba(0,0,0,.55); } }
+
+@media (prefers-reduced-motion: reduce){
+  .discovery-card, .discovery-border-glow, .discovery-glow, .discovery-orb, [data-reveal-child],
+  .discovery-preview-table tbody tr, .discovery-suggestions button, .check-path, .discovery-check-ring{ animation:none !important; opacity:1 !important; transform:none !important; }
+}
+
+@media(max-width:700px){
+  .analyst-page-ready{min-height:calc(100vh - 60px);}
+  .discovery-container{padding:18px 16px 24px;}
+  .discovery-card{padding:20px;border-radius:19px;}
+  .discovery-header{flex-direction:column;}
+  .discovery-change{align-self:flex-start;}
+  .discovery-status h1{max-width:calc(100vw - 110px);font-size:20px;}
+  .discovery-prompt h2{font-size:23px;}
+  .discovery-form{padding:6px;}
+  .discovery-stats{gap:8px;}
+}
 `;
