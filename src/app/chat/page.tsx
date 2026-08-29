@@ -1023,7 +1023,18 @@ export default function AISmartChat() {
                   key={message.id}
                   msg={message}
                   delay={index * 60}
-                  user={user}
+                  user={
+                    user
+                      ? {
+                          imageUrl: user.imageUrl,
+                          fullName: user.fullName,
+                          firstName: user.firstName,
+                          emailAddresses: user.emailAddresses?.map((email) => ({
+                            emailAddress: email.emailAddress,
+                          })),
+                        }
+                      : undefined
+                  }
                 />
               ))
             )}
