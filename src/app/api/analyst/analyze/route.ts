@@ -1,40 +1,70 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { analyzeDataset } from "@/lib/analyst/datasetAnalyzer";
 import type { DatasetColumn } from "@/lib/analyst/analystTypes";
 
 type AnalyzeRequest = {
-  rows: Record<string, unknown>[];
-  columns: DatasetColumn[];
+  datasetId?: string;
 };
+
+function parseStoredColumns(value: unknown): DatasetColumn[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(
+    (column): column is DatasetColumn =>
+      typeof column === "object" &&
+      column !== null &&
+      typeof (column as { name?: unknown }).name === "string" &&
+      typeof (column as { type?: unknown }).type === "string",
+  );
+}
+
+function parseStoredRows(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(
+    (row): row is Record<string, unknown> =>
+      typeof row === "object" && row !== null && !Array.isArray(row),
+  );
+}
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as AnalyzeRequest;
 
-    const rows = body.rows;
-    const columns = body.columns;
-
-    // Validate rows
-    if (!Array.isArray(rows)) {
+    if (!body.datasetId || typeof body.datasetId !== "string") {
       return NextResponse.json(
         {
           success: false,
-          error: "Dataset rows are required.",
+          error: "Dataset ID is required.",
         },
         { status: 400 },
       );
     }
 
-    // Validate columns
-    if (!Array.isArray(columns) || columns.length === 0) {
+    const dataset = await prisma.analystDataset.findUnique({
+      where: { id: body.datasetId },
+      select: {
+        id: true,
+        rowCount: true,
+        columnCount: true,
+        columns: true,
+        rows: true,
+      },
+    });
+
+    if (!dataset) {
       return NextResponse.json(
         {
           success: false,
-          error: "Dataset columns are required.",
+          error: "Dataset not found.",
         },
-        { status: 400 },
+        { status: 404 },
       );
     }
+
+    const rows = parseStoredRows(dataset.rows);
+    const columns = parseStoredColumns(dataset.columns);
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -46,11 +76,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Run deterministic statistical analysis
+    if (columns.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "The dataset contains no columns.",
+        },
+        { status: 400 },
+      );
+    }
+
     const analysis = analyzeDataset(rows, columns);
 
     return NextResponse.json({
       success: true,
+      datasetId: dataset.id,
       analysis,
     });
   } catch (error) {
@@ -60,9 +100,7 @@ export async function POST(request: Request) {
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to analyze dataset.",
+          error instanceof Error ? error.message : "Failed to analyze dataset.",
       },
       { status: 500 },
     );

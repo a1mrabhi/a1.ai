@@ -5,20 +5,31 @@ import {
   useRef,
   useState,
   MouseEvent as ReactMouseEvent,
+  type CSSProperties,
 } from "react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import type { DatasetColumn } from "@/lib/analyst/analystTypes";
+import type {
+  DatasetAnalysis,
+  DatasetColumn,
+} from "@/lib/analyst/analystTypes";
 import "./analyst.css";
 import AnalystResults from "./AnalystResults";
 
 type DatasetInfo = {
+  id: string;
   fileName: string;
   sheetName: string;
   rowCount: number;
   columnCount: number;
   columns: DatasetColumn[];
   previewRows: Record<string, unknown>[];
+  analysis: DatasetAnalysis;
+};
+type CSSVars = CSSProperties & {
+  "--d"?: string;
+  "--ri"?: number;
+  "--i"?: number;
 };
 
 /* ------------------------------------------------------------------ */
@@ -220,7 +231,9 @@ export default function AnalystPage() {
   const [analyzing, setAnalyzing] = useState(false);
 
   const [analysisError, setAnalysisError] = useState("");
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<DatasetAnalysis | null>(
+    null,
+  );
   const [initialChat, setInitialChat] = useState<{
     question: string;
     answer: string;
@@ -228,25 +241,25 @@ export default function AnalystPage() {
 
   useReveal(dataset);
 
- useEffect(() => {
-  if (!analysisResult) return;
+  useEffect(() => {
+    if (!analysisResult) return;
 
-  requestAnimationFrame(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     });
-  });
-}, [analysisResult]);
+  }, [analysisResult]);
 
   const handleFile = async (selectedFile: File | undefined) => {
-  if (!selectedFile) return;
+    if (!selectedFile) return;
 
-  setError("");
-  setAnalysisError("");
-  setAnalysisResult(null);
-  setInitialChat(null);
-  setDataset(null);
+    setError("");
+    setAnalysisError("");
+    setAnalysisResult(null);
+    setInitialChat(null);
+    setDataset(null);
 
     const allowedExtensions = ["csv", "xls", "xlsx"];
     const extension = selectedFile.name.split(".").pop()?.toLowerCase();
@@ -279,7 +292,14 @@ export default function AnalystPage() {
         throw new Error(data.error || "Unable to process the dataset.");
       }
 
-      setDataset(data.dataset);
+      if (!data.analysis) {
+        throw new Error("Dataset analysis was not returned by the server.");
+      }
+
+      setDataset({
+        ...data.dataset,
+        analysis: data.analysis,
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -320,31 +340,17 @@ export default function AnalystPage() {
     setAnalysisError("");
 
     try {
-      const analysisResponse = await fetch("/api/analyst/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rows: dataset.previewRows,
-          columns: dataset.columns,
-        }),
-      });
-
-      const analysisPayload = await analysisResponse.json();
-
-      if (!analysisResponse.ok || !analysisPayload.success) {
-        throw new Error(
-          analysisPayload.error || "Failed to analyze the dataset.",
-        );
-      }
+      // The upload API already analyzes the complete parsed dataset on the
+      // server. Reuse that result instead of analyzing the 20-row preview.
+      const analysis = dataset.analysis;
 
       const chatResponse = await fetch("/api/analyst/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: prompt,
-          rows: dataset.previewRows,
-          columns: dataset.columns,
-          analysis: analysisPayload.analysis,
+          datasetId: dataset.id,
+          analysis,
           fileName: dataset.fileName,
         }),
       });
@@ -365,7 +371,7 @@ export default function AnalystPage() {
       );
 
       setInitialChat({ question: prompt, answer });
-      setAnalysisResult(analysisPayload.analysis);
+      setAnalysisResult(analysis);
     } catch (error) {
       setAnalysisError(
         error instanceof Error
@@ -409,272 +415,312 @@ export default function AnalystPage() {
       </header>
 
       {analysisResult ? (
-  <AnalystResults
-    analysis={analysisResult}
-    fileName={dataset?.fileName}
-    rows={dataset?.previewRows ?? []}
-    columns={dataset?.columns ?? []}
-    initialQuestion={initialChat?.question}
-    initialAnswer={initialChat?.answer}
-  />
-) : (
-
-      <main className={`analyst-page ${isReady ? "analyst-page-ready" : ""}`}>
-        {!isReady && (
-          <section className="hero">
-            <div className="aurora" aria-hidden="true">
-              <span className="blob blob-violet" />
-              <span className="blob blob-amber" />
-              <span className="blob blob-cyan" />
-              <div className="grid-floor" />
-              <span className="beam beam-l" />
-              <span className="beam beam-r" />
-              <span className="particle p1" />
-              <span className="particle p2" />
-              <span className="particle p3" />
-              <span className="particle p4" />
-            </div>
-            <div className="container hero-inner">
-              <h1 className="hero-enter-2">
-                Understand your data.
-                <span className="grad-text">Discover what matters.</span>
-              </h1>
-              <p className="hero-sub hero-enter-3">
-                Upload a CSV or Excel dataset and let A1.ai find patterns,
-                trends, anomalies, and useful insights.
-              </p>
-            </div>
-          </section>
-        )}
-
-        <div className={`container analyst-container ${isReady ? "discovery-container" : ""}`}>
-          <input
-            ref={inputRef}
-            type="file"
-            hidden
-            accept=".csv,.xls,.xlsx"
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-
-          {!isReady ? (
-            <div
-              ref={uploadCardRef}
-              className={`upload-card ${loading ? "is-loading" : ""} ${dragActive ? "is-drag" : ""}`}
-              onMouseMove={onCardMove}
-              onClick={() => {
-                if (!loading) inputRef.current?.click();
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (!loading) setDragActive(true);
-              }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragActive(false);
-                if (!loading) handleFile(e.dataTransfer.files?.[0]);
-              }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === " ") && !loading) {
-                  inputRef.current?.click();
-                }
-              }}
-            >
-              <div className="upload-dots" aria-hidden="true" />
-              <div className="upload-spot" aria-hidden="true" />
-              <span className="upload-particle up1" aria-hidden="true" />
-              <span className="upload-particle up2" aria-hidden="true" />
-              <span className="upload-particle up3" aria-hidden="true" />
-              <span className="upload-border-glow" aria-hidden="true" />
-              <span className="upload-topline" aria-hidden="true" />
-
-              {!file ? (
-                <>
-                  <div className="upload-icon">
-                    <UploadCloudIcon />
-                    <span className="upload-icon-ring" />
-                  </div>
-                  <h2>Drop your dataset here</h2>
-                  <p>or click to choose a file</p>
-                  <span className="upload-formats">CSV · XLS · XLSX</span>
-                </>
-              ) : (
-                <>
-                  <div className="upload-icon loading-icon">
-                    <span className="spinner" />
-                  </div>
-                  <h2>Understanding your dataset...</h2>
-                  <p>Reading columns, rows, and data structure</p>
-                  <span className="upload-formats">{file.name}</span>
-                </>
-              )}
-            </div>
-          ) : (
-            <section className={`discovery-card ${analyzing ? "is-analyzing" : ""}`} data-reveal>
-              <span className="discovery-border-glow" aria-hidden="true" />
-              <div className="discovery-glow" aria-hidden="true" />
-              <div className="discovery-glow discovery-glow-2" aria-hidden="true" />
-              <span className="discovery-orb do1" aria-hidden="true" />
-              <span className="discovery-orb do2" aria-hidden="true" />
-
-              <div className="discovery-header" data-reveal-child style={{ ["--d" as any]: "0ms" }}>
-                <div className="discovery-status">
-                  <span className="discovery-check">
-                    <span className="discovery-check-ring" />
-                    <CheckBadgeIcon />
-                  </span>
-                  <div className="discovery-status-text">
-                    <span className="discovery-eyebrow">
-                      <span className="eyebrow-dot" />
-                      DATASET READY
-                    </span>
-                    <h1 title={dataset!.fileName}>{dataset!.fileName}</h1>
-                    <div className="discovery-stats">
-                      <span className="discovery-stat">
-                        <RowsIcon />
-                        {dataset!.rowCount.toLocaleString()} rows
-                      </span>
-                      <span className="discovery-stat-sep" />
-                      <span className="discovery-stat">
-                        <ColumnsIcon />
-                        {dataset!.columnCount} columns
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="discovery-change"
-                  onClick={() => inputRef.current?.click()}
-                  disabled={analyzing}
-                >
-                  Choose another file
-                </button>
+        <AnalystResults
+          analysis={analysisResult}
+          datasetId={dataset?.id ?? ""}
+          fileName={dataset?.fileName}
+          rows={dataset?.previewRows ?? []}
+          columns={dataset?.columns ?? []}
+          initialQuestion={initialChat?.question}
+          initialAnswer={initialChat?.answer}
+        />
+      ) : (
+        <main className={`analyst-page ${isReady ? "analyst-page-ready" : ""}`}>
+          {!isReady && (
+            <section className="hero">
+              <div className="aurora" aria-hidden="true">
+                <span className="blob blob-violet" />
+                <span className="blob blob-amber" />
+                <span className="blob blob-cyan" />
+                <div className="grid-floor" />
+                <span className="beam beam-l" />
+                <span className="beam beam-r" />
+                <span className="particle p1" />
+                <span className="particle p2" />
+                <span className="particle p3" />
+                <span className="particle p4" />
               </div>
-
-              {dataset!.previewRows.length > 0 && (
-                <div className="discovery-preview" data-reveal-child style={{ ["--d" as any]: "90ms" }}>
-                  <div className="discovery-preview-label">
-                    <span className="label-line" />
-                    SMALL PREVIEW
-                  </div>
-                  <div className="discovery-preview-table-wrap">
-                    <table className="discovery-preview-table">
-                      <thead>
-                        <tr>
-                          <th className="idx-col" aria-hidden="true" />
-                          {dataset!.columns.slice(0, 5).map((column, index) => (
-                            <th key={`${column.name}-${index}`}>{column.name}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dataset!.previewRows.slice(0, 3).map((row, rowIndex) => (
-                          <tr key={rowIndex} style={{ ["--ri" as any]: rowIndex }}>
-                            <td className="idx-col">{rowIndex + 1}</td>
-                            {dataset!.columns.slice(0, 5).map((column, columnIndex) => (
-                              <td key={`${column.name}-${columnIndex}`}>
-                                {formatValue(row[column.name])}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              <div className="discovery-divider" data-reveal-child style={{ ["--d" as any]: "150ms" }} />
-
-              <div className="discovery-prompt" data-reveal-child style={{ ["--d" as any]: "190ms" }}>
-                <h2>
-                  What would you like to <span className="grad-text-2">discover</span>?
-                </h2>
-                <p>
-                  Ask A1.ai to explore your dataset, or start with one of the
-                  focused discoveries below.
+              <div className="container hero-inner">
+                <h1 className="hero-enter-2">
+                  Understand your data.
+                  <span className="grad-text">Discover what matters.</span>
+                </h1>
+                <p className="hero-sub hero-enter-3">
+                  Upload a CSV or Excel dataset and let A1.ai find patterns,
+                  trends, anomalies, and useful insights.
                 </p>
-
-                <form
-                  className="discovery-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const input = event.currentTarget.elements.namedItem(
-                      "discovery",
-                    ) as HTMLInputElement | null;
-                    void handleDiscover(input?.value ?? "");
-                  }}
-                >
-                  <span className="discovery-form-icon" aria-hidden="true">
-                    <SparkleIcon />
-                  </span>
-                  <input
-                    name="discovery"
-                    placeholder="Ask anything about your data..."
-                    autoComplete="off"
-                    disabled={analyzing}
-                    aria-label="Ask anything about your data"
-                  />
-                  <button type="submit" disabled={analyzing} aria-label="Discover">
-                    {analyzing ? (
-                      <span className="discovery-spinner" />
-                    ) : (
-                      <SendIcon />
-                    )}
-                  </button>
-                </form>
-
-                {analyzing && (
-                  <p className="discovery-thinking">
-                    <span className="thinking-dots">
-                      <span />
-                      <span />
-                      <span />
-                    </span>
-                    Analyzing your dataset...
-                  </p>
-                )}
-
-                {analysisError && (
-                  <p className="discovery-error">{analysisError}</p>
-                )}
-
-                <div className="discovery-suggestions">
-                  <span>Try asking</span>
-                  {[
-                    "Give me an overview",
-                    "Find important patterns",
-                    "Find anomalies",
-                  ].map((suggestion, i) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      style={{ ["--i" as any]: i }}
-                      onClick={() => void handleDiscover(suggestion)}
-                      disabled={analyzing}
-                    >
-                      <SparkleIcon />
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
               </div>
             </section>
           )}
 
-          {error && (
-            <div className="error-card">
-              <span>!</span>
-              <p>{error}</p>
-            </div>
-          )}
-        </div>
-      </main>
-)}
+          <div
+            className={`container analyst-container ${isReady ? "discovery-container" : ""}`}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              hidden
+              accept=".csv,.xls,.xlsx"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+
+            {!isReady ? (
+              <div
+                ref={uploadCardRef}
+                className={`upload-card ${loading ? "is-loading" : ""} ${dragActive ? "is-drag" : ""}`}
+                onMouseMove={onCardMove}
+                onClick={() => {
+                  if (!loading) inputRef.current?.click();
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!loading) setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragActive(false);
+                  if (!loading) handleFile(e.dataTransfer.files?.[0]);
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if ((e.key === "Enter" || e.key === " ") && !loading) {
+                    inputRef.current?.click();
+                  }
+                }}
+              >
+                <div className="upload-dots" aria-hidden="true" />
+                <div className="upload-spot" aria-hidden="true" />
+                <span className="upload-particle up1" aria-hidden="true" />
+                <span className="upload-particle up2" aria-hidden="true" />
+                <span className="upload-particle up3" aria-hidden="true" />
+                <span className="upload-border-glow" aria-hidden="true" />
+                <span className="upload-topline" aria-hidden="true" />
+
+                {!file ? (
+                  <>
+                    <div className="upload-icon">
+                      <UploadCloudIcon />
+                      <span className="upload-icon-ring" />
+                    </div>
+                    <h2>Drop your dataset here</h2>
+                    <p>or click to choose a file</p>
+                    <span className="upload-formats">CSV · XLS · XLSX</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="upload-icon loading-icon">
+                      <span className="spinner" />
+                    </div>
+                    <h2>Understanding your dataset...</h2>
+                    <p>Reading columns, rows, and data structure</p>
+                    <span className="upload-formats">{file.name}</span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <section
+                className={`discovery-card ${analyzing ? "is-analyzing" : ""}`}
+                data-reveal
+              >
+                <span className="discovery-border-glow" aria-hidden="true" />
+                <div className="discovery-glow" aria-hidden="true" />
+                <div
+                  className="discovery-glow discovery-glow-2"
+                  aria-hidden="true"
+                />
+                <span className="discovery-orb do1" aria-hidden="true" />
+                <span className="discovery-orb do2" aria-hidden="true" />
+
+                <div
+                  className="discovery-header"
+                  data-reveal-child
+                  style={{ "--d": "0ms" } as CSSVars}
+                >
+                  <div className="discovery-status">
+                    <span className="discovery-check">
+                      <span className="discovery-check-ring" />
+                      <CheckBadgeIcon />
+                    </span>
+                    <div className="discovery-status-text">
+                      <span className="discovery-eyebrow">
+                        <span className="eyebrow-dot" />
+                        DATASET READY
+                      </span>
+                      <h1 title={dataset!.fileName}>{dataset!.fileName}</h1>
+                      <div className="discovery-stats">
+                        <span className="discovery-stat">
+                          <RowsIcon />
+                          {dataset!.rowCount.toLocaleString()} rows
+                        </span>
+                        <span className="discovery-stat-sep" />
+                        <span className="discovery-stat">
+                          <ColumnsIcon />
+                          {dataset!.columnCount} columns
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="discovery-change"
+                    onClick={() => inputRef.current?.click()}
+                    disabled={analyzing}
+                  >
+                    Choose another file
+                  </button>
+                </div>
+
+                {dataset!.previewRows.length > 0 && (
+                  <div
+                    className="discovery-preview"
+                    data-reveal-child
+                    style={{ "--d": "90ms" } as CSSVars}
+                  >
+                    <div className="discovery-preview-label">
+                      <span className="label-line" />
+                      SMALL PREVIEW
+                    </div>
+                    <div className="discovery-preview-table-wrap">
+                      <table className="discovery-preview-table">
+                        <thead>
+                          <tr>
+                            <th className="idx-col" aria-hidden="true" />
+                            {dataset!.columns
+                              .slice(0, 5)
+                              .map((column, index) => (
+                                <th key={`${column.name}-${index}`}>
+                                  {column.name}
+                                </th>
+                              ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dataset!.previewRows
+                            .slice(0, 3)
+                            .map((row, rowIndex) => (
+                              <tr
+                                key={rowIndex}
+                                style={{ "--ri": rowIndex } as CSSVars}
+                              >
+                                <td className="idx-col">{rowIndex + 1}</td>
+                                {dataset!.columns
+                                  .slice(0, 5)
+                                  .map((column, columnIndex) => (
+                                    <td key={`${column.name}-${columnIndex}`}>
+                                      {formatValue(row[column.name])}
+                                    </td>
+                                  ))}
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className="discovery-divider"
+                  data-reveal-child
+                  style={{ "--d": "150ms" } as CSSVars}
+                />
+
+                <div
+                  className="discovery-prompt"
+                  data-reveal-child
+                  style={{ "--d": "190ms" } as CSSVars}
+                >
+                  <h2>
+                    What would you like to{" "}
+                    <span className="grad-text-2">discover</span>?
+                  </h2>
+                  <p>
+                    Ask A1.ai to explore your dataset, or start with one of the
+                    focused discoveries below.
+                  </p>
+
+                  <form
+                    className="discovery-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const input = event.currentTarget.elements.namedItem(
+                        "discovery",
+                      ) as HTMLInputElement | null;
+                      void handleDiscover(input?.value ?? "");
+                    }}
+                  >
+                    <span className="discovery-form-icon" aria-hidden="true">
+                      <SparkleIcon />
+                    </span>
+                    <input
+                      name="discovery"
+                      placeholder="Ask anything about your data..."
+                      autoComplete="off"
+                      disabled={analyzing}
+                      aria-label="Ask anything about your data"
+                    />
+                    <button
+                      type="submit"
+                      disabled={analyzing}
+                      aria-label="Discover"
+                    >
+                      {analyzing ? (
+                        <span className="discovery-spinner" />
+                      ) : (
+                        <SendIcon />
+                      )}
+                    </button>
+                  </form>
+
+                  {analyzing && (
+                    <p className="discovery-thinking">
+                      <span className="thinking-dots">
+                        <span />
+                        <span />
+                        <span />
+                      </span>
+                      Analyzing your dataset...
+                    </p>
+                  )}
+
+                  {analysisError && (
+                    <p className="discovery-error">{analysisError}</p>
+                  )}
+
+                  <div className="discovery-suggestions">
+                    <span>Try asking</span>
+                    {[
+                      "Give me an overview",
+                      "Find important patterns",
+                      "Find anomalies",
+                    ].map((suggestion, i) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        style={{ "--i": i } as CSSVars}
+                        onClick={() => void handleDiscover(suggestion)}
+                        disabled={analyzing}
+                      >
+                        <SparkleIcon />
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {error && (
+              <div className="error-card">
+                <span>!</span>
+                <p>{error}</p>
+              </div>
+            )}
+          </div>
+        </main>
+      )}
     </>
   );
 }

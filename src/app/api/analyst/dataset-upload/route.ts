@@ -1,15 +1,18 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseDataset } from "@/lib/analyst/datasetParser";
 import { profileDataset } from "@/lib/analyst/datasetProfiler";
 import { normalizeColumnType } from "@/lib/analyst/analystTypes";
+import { analyzeDataset } from "@/lib/analyst/datasetAnalyzer";
+import { NextResponse } from "next/server";
+import { getOrCreateUser } from "@/lib/user";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-const ALLOWED_EXTENSIONS = [".csv", ".xls", ".xlsx"];
+const ALLOWED_EXTENSIONS = [".csv", ".xls", ".xlsx", ".json"];
 
 export async function POST(request: Request) {
   try {
+    const user = await getOrCreateUser();
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -24,15 +27,13 @@ export async function POST(request: Request) {
     }
 
     const fileName = file.name.toLowerCase();
-    const extension = ALLOWED_EXTENSIONS.find((ext) =>
-      fileName.endsWith(ext),
-    );
+    const extension = ALLOWED_EXTENSIONS.find((ext) => fileName.endsWith(ext));
 
     if (!extension) {
       return NextResponse.json(
         {
           success: false,
-          error: "Unsupported file type. Please upload CSV, XLS, or XLSX.",
+          error: "Unsupported file type. Please upload CSV, XLS, XLSX, or JSON.",
         },
         { status: 400 },
       );
@@ -84,25 +85,72 @@ export async function POST(request: Request) {
     const previewRows = parsedDataset.rows.slice(0, 20);
 
     const normalizedColumns = parsedDataset.columns.map((columnName) => {
-      const sampleValue = parsedDataset.rows.find(
-        (row) =>
-          row[columnName] !== null &&
-          row[columnName] !== undefined,
-      )?.[columnName];
+      const values = parsedDataset.rows
+        .map((row) => row[columnName])
+        .filter(
+          (value) =>
+            value !== null &&
+            value !== undefined &&
+            !(typeof value === "string" && value.trim() === ""),
+        );
 
-      const missingCount = parsedDataset.rows.filter(
-        (row) =>
-          row[columnName] === null ||
-          row[columnName] === undefined,
-      ).length;
+      const missingCount = parsedDataset.rows.length - values.length;
+
+      if (values.length === 0) {
+        return {
+          name: columnName,
+          type: normalizeColumnType("unknown"),
+          missing: missingCount,
+        };
+      }
+
+      const typeCounts = {
+        number: 0,
+        boolean: 0,
+        date: 0,
+        string: 0,
+      };
+
+      for (const value of values) {
+        if (typeof value === "number" && Number.isFinite(value)) {
+          typeCounts.number++;
+          continue;
+        }
+
+        if (typeof value === "boolean") {
+          typeCounts.boolean++;
+          continue;
+        }
+
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+
+          if (
+            trimmed !== "" &&
+            Number.isFinite(Number(trimmed.replace(/,/g, "")))
+          ) {
+            typeCounts.number++;
+            continue;
+          }
+
+          const parsedDate = new Date(trimmed);
+
+          if (!Number.isNaN(parsedDate.getTime())) {
+            typeCounts.date++;
+            continue;
+          }
+        }
+
+        typeCounts.string++;
+      }
+
+      const dominantType =
+        Object.entries(typeCounts).sort(([, a], [, b]) => b - a)[0]?.[0] ??
+        "unknown";
 
       return {
         name: columnName,
-        type: normalizeColumnType(
-          sampleValue === undefined
-            ? "unknown"
-            : typeof sampleValue,
-        ),
+        type: normalizeColumnType(dominantType),
         missing: missingCount,
       };
     });
@@ -117,7 +165,9 @@ export async function POST(request: Request) {
       rowCount: parsedDataset.rowCount,
       columnCount: parsedDataset.columnCount,
       columns: normalizedColumns,
-      previewRows,
+      // The profiler now receives the complete dataset. The UI still receives
+      // only previewRows below so large files are not sent to the browser.
+      previewRows: parsedDataset.rows,
     });
 
     // ------------------------------------------------------------
@@ -126,6 +176,7 @@ export async function POST(request: Request) {
 
     const savedDataset = await prisma.analystDataset.create({
       data: {
+        userId: user.id,
         fileName: parsedDataset.fileName,
         fileSize: file.size,
         mimeType: file.type || null,
@@ -142,21 +193,26 @@ export async function POST(request: Request) {
     // Return dataset + database ID
     // ------------------------------------------------------------
 
+    // Analyze the complete parsed dataset on the server. Only the compact
+    // analysis result and 20-row preview are returned to the browser.
+    const analysis = analyzeDataset(parsedDataset.rows, normalizedColumns);
+
     return NextResponse.json({
       success: true,
 
       dataset: {
-  id: savedDataset.id,
-  fileName: savedDataset.fileName,
-  fileSize: savedDataset.fileSize,
-  mimeType: savedDataset.mimeType,
-  rowCount: savedDataset.rowCount,
-  columnCount: savedDataset.columnCount,
-  columns: savedDataset.columns,
-  previewRows: parsedDataset.rows.slice(0, 20),
-},
+        id: savedDataset.id,
+        fileName: savedDataset.fileName,
+        fileSize: savedDataset.fileSize,
+        mimeType: savedDataset.mimeType,
+        rowCount: savedDataset.rowCount,
+        columnCount: savedDataset.columnCount,
+        columns: savedDataset.columns,
+        previewRows,
+      },
 
       profile,
+      analysis,
     });
   } catch (error) {
     console.error("Dataset upload error:", error);

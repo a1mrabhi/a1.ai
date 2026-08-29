@@ -142,17 +142,37 @@ function useReveal() {
 }
 
 function useGreeting(name?: string | null) {
-  const [state, setState] = useState({ text: "Good day", period: "day" });
+  const [state, setState] = useState({
+    text: "Good day",
+    period: "day",
+  });
+
   useEffect(() => {
-    const h = new Date().getHours();
-    if (h < 5) setState({ text: "Still up", period: "night" });
-    else if (h < 12) setState({ text: "Good morning", period: "morning" });
-    else if (h < 17) setState({ text: "Good afternoon", period: "afternoon" });
-    else if (h < 21) setState({ text: "Good evening", period: "evening" });
-    else setState({ text: "Good night", period: "night" });
+    const timer = window.setTimeout(() => {
+      const h = new Date().getHours();
+
+      if (h < 5) {
+        setState({ text: "Still up", period: "night" });
+      } else if (h < 12) {
+        setState({ text: "Good morning", period: "morning" });
+      } else if (h < 17) {
+        setState({ text: "Good afternoon", period: "afternoon" });
+      } else if (h < 21) {
+        setState({ text: "Good evening", period: "evening" });
+      } else {
+        setState({ text: "Good night", period: "night" });
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
+
   const who = name ? `, ${name}` : "";
-  return { line: `${state.text}${who}`, period: state.period };
+
+  return {
+    line: `${state.text}${who}`,
+    period: state.period,
+  };
 }
 
 function useClock() {

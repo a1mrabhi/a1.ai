@@ -1,6 +1,6 @@
 "use client";
 
-import type { DatasetAnalysis } from "@/lib/analyst/datasetAnalyzer";
+import type { DatasetAnalysis } from "@/lib/analyst/analystTypes";
 
 type AnalystResultsProps = {
   analysis: DatasetAnalysis;

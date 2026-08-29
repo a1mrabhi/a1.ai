@@ -1,8 +1,8 @@
-import type { DatasetPreview } from './analystTypes';
+import type { DatasetPreview } from "./analystTypes";
 
 export type ColumnProfile = {
   name: string;
-  type: DatasetPreview['columns'][number]['type'];
+  type: DatasetPreview["columns"][number]["type"];
   nonEmpty: number;
   missing: number;
   unique: number;
@@ -23,9 +23,7 @@ export type DatasetProfile = {
   profiles: ColumnProfile[];
 };
 
-export function profileDataset(
-  dataset: DatasetPreview
-): DatasetProfile {
+export function profileDataset(dataset: DatasetPreview): DatasetProfile {
   const rows = dataset.previewRows ?? [];
   const columns = dataset.columns ?? [];
 
@@ -42,29 +40,25 @@ export function profileDataset(
 
     const nonEmptyValues = values.filter(
       (value) =>
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ''
+        value !== null && value !== undefined && String(value).trim() !== "",
     );
 
     const missing = values.length - nonEmptyValues.length;
 
     missingCells += missing;
 
-    const uniqueValues = new Set(
-      nonEmptyValues.map((value) => String(value))
-    );
+    const uniqueValues = new Set(nonEmptyValues.map((value) => String(value)));
 
-    let type = column.type;
+    const type = column.type;
 
     /*
      * Prefer the parser's detected type.
      */
-    if (type === 'number') {
+    if (type === "number") {
       numericColumns.push(column.name);
-    } else if (type === 'date') {
+    } else if (type === "date") {
       dateColumns.push(column.name);
-    } else if (type === 'string') {
+    } else if (type === "string") {
       categoricalColumns.push(column.name);
     }
 
@@ -79,26 +73,21 @@ export function profileDataset(
     /*
      * Numeric statistics
      */
-    if (type === 'number') {
+    if (type === "number") {
       const numericValues = nonEmptyValues
         .map((value) => {
-          if (typeof value === 'number') {
+          if (typeof value === "number") {
             return value;
           }
 
-          const parsed = Number(
-            String(value).replace(/,/g, '').trim()
-          );
+          const parsed = Number(String(value).replace(/,/g, "").trim());
 
           return Number.isFinite(parsed) ? parsed : null;
         })
         .filter((value): value is number => value !== null);
 
       if (numericValues.length > 0) {
-        const total = numericValues.reduce(
-          (sum, value) => sum + value,
-          0
-        );
+        const total = numericValues.reduce((sum, value) => sum + value, 0);
 
         profile.min = Math.min(...numericValues);
         profile.max = Math.max(...numericValues);

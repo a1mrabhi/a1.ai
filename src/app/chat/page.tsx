@@ -119,7 +119,12 @@ function MessageBubble({
 }: {
   msg: Message;
   delay: number;
-  user?: any;
+  user?: {
+    imageUrl?: string;
+    fullName?: string | null;
+    firstName?: string | null;
+    emailAddresses?: { emailAddress: string }[];
+  };
 }) {
   const isUser = msg.role === "USER";
 
@@ -258,7 +263,11 @@ export default function AISmartChat() {
   }, []);
 
   useEffect(() => {
-    loadChats();
+    const timer = window.setTimeout(() => {
+      void loadChats();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadChats]);
 
   // ------------------------------------------------------------
@@ -287,12 +296,16 @@ export default function AISmartChat() {
   }, []);
 
   useEffect(() => {
-    if (!selectedChatId) {
-      setMessages([]);
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (!selectedChatId) {
+        setMessages([]);
+        return;
+      }
 
-    loadMessages(selectedChatId);
+      void loadMessages(selectedChatId);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [selectedChatId, loadMessages]);
 
   // ------------------------------------------------------------
@@ -375,7 +388,7 @@ export default function AISmartChat() {
       // Optimistic user message
       // -----------------------------------------
       const optimisticMessage: Message = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${crypto.randomUUID()}`,
         role: "USER",
         content,
         createdAt: new Date().toISOString(),

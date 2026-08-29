@@ -185,7 +185,7 @@ interface MagneticButtonProps {
   as?: ElementType;
   className?: string;
   children?: ReactNode;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 function MagneticButton({
@@ -424,7 +424,7 @@ export default function A1aiLanding() {
       <section className="features" id="features">
         <div className="container">
           <div className="section-head" data-reveal>
-            <div className="section-eyebrow">What's inside</div>
+            <div className="section-eyebrow">What&apos;s inside</div>
             <h2>Two tools. Zero clutter.</h2>
             <p>
               Each one is built around a real thing you get stuck on — not a
