@@ -1,4 +1,5 @@
 import type { DatasetColumn } from "@/lib/analyst/analystTypes";
+import { generateAIResponse, type AIMessage } from "@/lib/ai";
 
 export type QueryOperator =
   | "="
@@ -854,8 +855,6 @@ export async function createQueryPlan(
     2,
   );
 
-  const { generateWithGemini } = await import("@/lib/ai/gemini");
-
   const prompt = `
 You are the query planner for A1.ai.
 
@@ -1028,14 +1027,13 @@ DATASET SCHEMA:
 ${schema}
 `;
 
-  type ChatMessage = Parameters<typeof generateWithGemini>[0][number];
-
-  const messages: ChatMessage[] = [
+  const messages: AIMessage[] = [
     { role: "system", content: prompt },
     { role: "user", content: question },
   ];
 
-  const response = await generateWithGemini(messages);
+  const { content: response, provider } = await generateAIResponse(messages);
+  console.log(`Analyst query planner provider: ${provider}`);
   const parsed = extractJson(response);
 
   if (!isQueryPlan(parsed)) {
@@ -1052,7 +1050,7 @@ ${schema}
     return parsed;
   }
 
-  const correctionMessages: ChatMessage[] = [
+  const correctionMessages: AIMessage[] = [
     ...messages,
     { role: "assistant", content: JSON.stringify(parsed) },
     {
@@ -1068,7 +1066,9 @@ ${schema}
   ];
 
   try {
-    const correctionResponse = await generateWithGemini(correctionMessages);
+    const { content: correctionResponse, provider } =
+      await generateAIResponse(correctionMessages);
+    console.log(`Analyst query planner correction provider: ${provider}`);
     const corrected = extractJson(correctionResponse);
 
     if (isQueryPlan(corrected)) {
