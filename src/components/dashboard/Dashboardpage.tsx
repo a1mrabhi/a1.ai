@@ -579,7 +579,7 @@ body{
 
 /* ---------- Header ---------- */
 header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdrop-filter:blur(14px) saturate(140%); border-bottom:1px solid var(--border); }
-.nav{ display:flex; align-items:center; gap:24px; height:68px; }
+.nav{ display:flex; align-items:center; justify-content:space-between; gap:24px; height:68px; }
 .logo{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:600; font-size:19px; color:var(--text-primary); text-decoration:none; flex-shrink:0; }
 .mark{ width:24px; height:24px; border-radius:7px; position:relative; background:conic-gradient(from 180deg, var(--amber), var(--violet), var(--cyan), var(--amber)); flex-shrink:0; animation:markSpin 6s linear infinite; padding:2px; }
 .mark-core{ position:absolute; inset:2px; border-radius:5px; background:var(--bg); }
@@ -844,6 +844,7 @@ h1{ font-family:var(--font-display); font-weight:600; font-size:clamp(32px,4.4vw
 }
 @media (max-width:560px){
   .nav{ gap:12px; }
+  .container{ padding:0 16px; }
 }
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; }

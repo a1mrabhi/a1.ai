@@ -58,6 +58,15 @@ export type QueryPlan = {
    */
   trendAggregation?: "sum" | "average" | "count";
   filters?: QueryFilter[];
+  /**
+   * Used by "percentage" only. Defines the denominator population when the
+   * question asks "what percentage of <subgroup> have <condition>". The
+   * subgroup-defining clause(s) go here; `filters` still carries the full
+   * condition (subgroup + condition together) used for the numerator. If
+   * omitted, the denominator is the whole dataset (post any non-percentage
+   * filters), preserving old behavior.
+   */
+  populationFilters?: QueryFilter[];
   secondColumn?: string;
   /** Used by formula_check: the third operand column, e.g. Unit_Value in Quantity * Unit_Value. */
   thirdColumn?: string;
@@ -65,6 +74,13 @@ export type QueryPlan = {
   formulaOperator?: "multiply" | "add" | "subtract" | "divide";
   /** Used by formula_check: allowed absolute difference before flagging a mismatch. Defaults to 0.01. */
   tolerance?: number;
+  /**
+   * Sort direction for grouped aggregates (group_count / group_sum /
+   * group_average). Defaults to "desc" for backward compatibility, so
+   * "highest" / "most" keep working unchanged. Set to "asc" for
+   * "lowest" / "smallest" / "worst" style questions.
+   */
+  sortDirection?: "asc" | "desc";
   limit?: number;
 };
 
@@ -118,6 +134,32 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
+/**
+ * Standard ISO-8601 week numbering (Monday-start weeks, week 1 is the week
+ * containing the year's first Thursday). Replaces a naive "7-day blocks
+ * from Jan 1" scheme, which misassigns the first few days of most years
+ * and the last few days of some years to the wrong week/year.
+ */
+function getIsoWeek(date: Date): { isoYear: number; isoWeek: number } {
+  const target = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
+  const dayNumber = (target.getUTCDay() + 6) % 7; // Mon=0 .. Sun=6
+  target.setUTCDate(target.getUTCDate() - dayNumber + 3); // nearest Thursday
+  const firstThursday = target.getTime();
+
+  target.setUTCMonth(0, 1);
+  if (target.getUTCDay() !== 4) {
+    target.setUTCDate(1 + ((4 - target.getUTCDay() + 7) % 7));
+  }
+
+  const isoWeek =
+    1 + Math.round((firstThursday - target.getTime()) / (7 * 86400000));
+  const isoYear = new Date(firstThursday).getUTCFullYear();
+
+  return { isoYear, isoWeek };
+}
+
 function toDate(value: unknown): Date | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value;
@@ -132,7 +174,9 @@ function toDate(value: unknown): Date | null {
 }
 
 function comparableText(value: unknown): string {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function valuesEqual(actual: unknown, expected: unknown): boolean {
@@ -153,7 +197,24 @@ function passesFilter(
   const actual = row[filter.column];
   const expected = filter.value;
 
-  if (filter.operator === "=" || filter.operator === "on") {
+  if (filter.operator === "=") {
+    return valuesEqual(actual, expected);
+  }
+
+  if (filter.operator === "on") {
+    const actualDate = toDate(actual);
+    const expectedDate = toDate(expected);
+
+    // "on" means the same calendar date when both sides are date-like.
+    // Fall back to normal equality for non-date values.
+    if (actualDate && expectedDate) {
+      return (
+        actualDate.getFullYear() === expectedDate.getFullYear() &&
+        actualDate.getMonth() === expectedDate.getMonth() &&
+        actualDate.getDate() === expectedDate.getDate()
+      );
+    }
+
     return valuesEqual(actual, expected);
   }
 
@@ -296,10 +357,11 @@ function profileColumns(
   return columns.map((column) => {
     const values = rows.map((row) => row[column.name]);
     const nonMissing = values.filter((value) => !isMissing(value));
-    const missingCount =
-      typeof column.missing === "number"
-        ? column.missing
-        : totalRows - nonMissing.length;
+    // Always derive missingCount from the rows actually passed in (e.g.
+    // filteredRows for a "describe West employees" question), never from
+    // column.missing — that figure reflects the whole original dataset and
+    // would silently overstate missing counts on any filtered subset.
+    const missingCount = totalRows - nonMissing.length;
 
     const numericCount = nonMissing.filter(
       (value) => toNumber(value) !== null,
@@ -341,6 +403,20 @@ function pearsonCorrelation(
 
   if (pairs.length < 2) return null;
 
+  return correlationOfPairs(pairs);
+}
+
+/** Pearson correlation of two same-length numeric arrays (e.g. a bucket
+ *  index 0..n-1 against that bucket's average value) — used to rank trend
+ *  candidates by how strongly they actually move with time, rather than
+ *  just picking whichever numeric column happens to come first. */
+function correlationOfSeries(xs: number[], ys: number[]): number {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return 0;
+  return correlationOfPairs(xs.slice(0, n).map((x, i) => ({ x, y: ys[i] })));
+}
+
+function correlationOfPairs(pairs: { x: number; y: number }[]): number {
   const xMean = pairs.reduce((sum, pair) => sum + pair.x, 0) / pairs.length;
   const yMean = pairs.reduce((sum, pair) => sum + pair.y, 0) / pairs.length;
 
@@ -378,10 +454,225 @@ function normalizeColumnName(
   );
 }
 
-function validatePlan(
+/** Same normalization as normalizeColumnName, exposed for substring checks
+ *  against free-text questions (not just exact column-name matches). */
+function normalizeForMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * Splits a column name into its significant "words" (handling snake_case,
+ * kebab-case, and camelCase) so a question can be checked for a partial /
+ * synonym-adjacent mention of the column rather than only an exact,
+ * whole-name substring match. Short words (<4 chars) are dropped since
+ * they produce too many false positives (e.g. "ID", "Age").
+ */
+function columnWords(name: string): string[] {
+  return name
+    .split(/[\s_-]+/)
+    .flatMap((part) => part.split(/(?=[A-Z][a-z])/))
+    .map((word) => normalizeForMatch(word))
+    .filter((word) => word.length >= 4);
+}
+
+/**
+ * True if the question plausibly refers to this column: either the whole
+ * (normalized) column name appears verbatim, or at least one of its
+ * significant words does. This is deliberately generous — it exists only
+ * to decide whether a column is "mentioned", not to prove a match.
+ */
+function mentionsColumn(
+  name: string | undefined,
+  normalizedQuestion: string,
+): boolean {
+  if (!name) return false;
+  if (normalizedQuestion.includes(normalizeForMatch(name))) return true;
+  return columnWords(name).some((word) => normalizedQuestion.includes(word));
+}
+
+/** Questions phrased with these comparison cues ("more than 10 years",
+ *  "at least 5", "below 3", or their word-form numeral equivalents like
+ *  "more than ten") imply a filter clause should exist. This is a plain-
+ *  English pattern match, not tied to any dataset's columns. */
+const NUMBER_WORD =
+  "(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|" +
+  "fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|" +
+  "fifty|sixty|seventy|eighty|ninety|hundred|thousand|million)";
+
+const COMPARISON_CUE = new RegExp(
+  "\\b(more than|greater than|above|over|at least|no less than|no fewer than|" +
+    "at or above|below|less than|under|fewer than|at most|no more than|" +
+    "at or below|exactly|equal to|between)\\b\\s*(?:\\$?\\d|" +
+    NUMBER_WORD +
+    "\\b)",
+  "i",
+);
+
+/** Date-based comparison cues ("before 2020", "after January", "since
+ *  2019") that should also become a filter clause. */
+const DATE_COMPARISON_CUE =
+  /\b(before|after|since|until)\b\s+(\d{4}|january|february|march|april|may|june|july|august|september|october|november|december)/i;
+
+const OPERATIONS_REQUIRING_TARGET: QueryPlan["operation"][] = [
+  "sum",
+  "average",
+  "min",
+  "max",
+  "median",
+  "top",
+  "bottom",
+];
+
+const GROUPED_OPERATIONS: QueryPlan["operation"][] = [
+  "group_count",
+  "group_sum",
+  "group_average",
+];
+
+/**
+ * Returns every entry in `subset` that has no matching entry in `superset`
+ * (same column, operator, value, and secondValue). Used to enforce that a
+ * percentage query's populationFilters (denominator) is always contained
+ * within filters (numerator) — otherwise the numerator and denominator can
+ * describe different populations and the resulting percentage can exceed
+ * 100% or otherwise not mean what it claims to.
+ */
+function filtersSubsetGaps(
+  subset: QueryFilter[],
+  superset: QueryFilter[],
+): QueryFilter[] {
+  return subset.filter(
+    (needle) =>
+      !superset.some(
+        (candidate) =>
+          normalizeForMatch(candidate.column) ===
+            normalizeForMatch(needle.column) &&
+          candidate.operator === needle.operator &&
+          String(candidate.value) === String(needle.value) &&
+          String(candidate.secondValue ?? "") ===
+            String(needle.secondValue ?? ""),
+      ),
+  );
+}
+
+/** Cues implying the grouped aggregate should be sorted ascending
+ *  ("lowest", "smallest") vs. descending ("highest", "most" — the
+ *  default). */
+const ASCENDING_CUE = /\b(lowest|smallest|least|fewest|worst|minimum)\b/i;
+const DESCENDING_CUE = /\b(highest|largest|greatest|most|maximum|best)\b/i;
+
+/**
+ * Heuristic, dataset-agnostic sanity check that compares the planner's
+ * chosen columns/settings against the words actually used in the
+ * question — never against the dataset's *values*, only column names vs.
+ * question text — so it behaves identically no matter what file was
+ * uploaded.
+ *
+ * Catches several common LLM query-planning failures:
+ *   1. Picking a target column that a *different, more literally-named*
+ *      column matches better (a sign the model defaulted to some other
+ *      column instead of the one the question is asking to summarize).
+ *   2. Dropping a comparison clause ("more than 10", "at least 5",
+ *      "more than ten", "before 2020") on the floor instead of turning
+ *      it into a filter.
+ *   3. Using the whole dataset as the percentage denominator when the
+ *      question actually asks for a percentage "of" some subgroup.
+ *   4. Sorting a grouped aggregate in the wrong direction for
+ *      "lowest" / "highest" style questions.
+ *
+ * Returns a list of plain-language issue descriptions (empty = looks fine).
+ */
+function findPlanIssues(
   plan: QueryPlan,
-  columns: DatasetColumn[],
-): QueryPlan {
+  question: string,
+  allColumns: DatasetColumn[],
+): string[] {
+  const issues: string[] = [];
+  const normalizedQuestion = normalizeForMatch(question);
+
+  if (
+    OPERATIONS_REQUIRING_TARGET.includes(plan.operation) &&
+    plan.targetColumn &&
+    !mentionsColumn(plan.targetColumn, normalizedQuestion)
+  ) {
+    const alternative = allColumns.find(
+      (col) =>
+        col.name !== plan.targetColumn &&
+        mentionsColumn(col.name, normalizedQuestion),
+    );
+
+    // Only flag this when a *different* column matches the question text
+    // better than the chosen one. If nothing else matches either, the
+    // chosen column is plausibly a legitimate synonym (e.g. "pay" for
+    // Annual_Salary) that this text-only heuristic can't resolve, and
+    // flagging it would just produce noisy false positives.
+    if (alternative) {
+      issues.push(
+        `The target column "${plan.targetColumn}" does not appear anywhere ` +
+          `in the question, but "${alternative.name}" does. Re-identify ` +
+          `which column's values the question actually wants summarized — ` +
+          `it is often a different column from any filter condition ` +
+          `mentioned in the same question.`,
+      );
+    }
+  }
+
+  if (
+    (COMPARISON_CUE.test(question) || DATE_COMPARISON_CUE.test(question)) &&
+    (plan.filters ?? []).length === 0
+  ) {
+    issues.push(
+      `The question contains a comparison clause (e.g. "more than 10", ` +
+        `"at least five", "before 2020") but the plan has no filters. Every ` +
+        `such clause must become its own entry in filters[].`,
+    );
+  }
+
+  if (plan.operation === "percentage") {
+    const filters = plan.filters ?? [];
+    const populationFilters = plan.populationFilters ?? [];
+
+    if (filters.length > 1 && !populationFilters.length) {
+      issues.push(
+        `This percentage question has multiple filter clauses but no ` +
+          `populationFilters. If it asks for a percentage "of" a subgroup ` +
+          `(e.g. "of West employees have X"), put the subgroup-defining ` +
+          `clause in populationFilters (the denominator) and the full ` +
+          `condition (subgroup + criteria together) in filters (the ` +
+          `numerator).`,
+      );
+    }
+
+    const unmatched = filtersSubsetGaps(populationFilters, filters);
+    if (unmatched.length) {
+      issues.push(
+        `The populationFilters clause on "${unmatched[0].column}" does not ` +
+          `also appear in filters. The denominator condition (populationFilters) ` +
+          `must always be a subset of the numerator condition (filters), or the ` +
+          `resulting percentage can exceed 100% or be otherwise meaningless. ` +
+          `Every clause in populationFilters must be repeated inside filters.`,
+      );
+    }
+  }
+
+  if (GROUPED_OPERATIONS.includes(plan.operation)) {
+    if (ASCENDING_CUE.test(question) && plan.sortDirection !== "asc") {
+      issues.push(
+        `The question asks for the lowest/smallest/worst group, but ` +
+          `sortDirection is not set to "asc".`,
+      );
+    } else if (DESCENDING_CUE.test(question) && plan.sortDirection === "asc") {
+      issues.push(
+        `The question asks for the highest/largest/best group, but ` +
+          `sortDirection is set to "asc" instead of "desc".`,
+      );
+    }
+  }
+
+  return issues;
+}
+
+function validatePlan(plan: QueryPlan, columns: DatasetColumn[]): QueryPlan {
   if (!ALL_OPERATIONS.includes(plan.operation)) {
     throw new Error("The requested analysis operation is not supported.");
   }
@@ -398,18 +689,90 @@ function validatePlan(
     return resolved;
   };
 
-  const filters = (plan.filters ?? []).map((filter) => {
-    const column = resolve(filter.column);
+  const resolveFilters = (filters: QueryFilter[] = []): QueryFilter[] =>
+    filters.map((filter) => {
+      const column = resolve(filter.column);
 
-    if (!column) {
-      throw new Error("A filter is missing its column.");
+      if (!column) {
+        throw new Error("A filter is missing its column.");
+      }
+
+      if (
+        ![
+          "=",
+          "!=",
+          ">",
+          ">=",
+          "<",
+          "<=",
+          "contains",
+          "startsWith",
+          "endsWith",
+          "before",
+          "after",
+          "on",
+          "between",
+        ].includes(filter.operator)
+      ) {
+        throw new Error(`Unsupported filter operator "${filter.operator}".`);
+      }
+
+      if (filter.operator === "between" && filter.secondValue === undefined) {
+        throw new Error(
+          `The "between" filter on "${column}" requires secondValue.`,
+        );
+      }
+
+      return {
+        ...filter,
+        column,
+      };
+    });
+
+  if (
+    plan.trendPeriod !== undefined &&
+    !["day", "week", "month", "quarter", "year"].includes(plan.trendPeriod)
+  ) {
+    throw new Error(`Unsupported trend period "${plan.trendPeriod}".`);
+  }
+
+  if (
+    plan.trendAggregation !== undefined &&
+    !["sum", "average", "count"].includes(plan.trendAggregation)
+  ) {
+    throw new Error(
+      `Unsupported trend aggregation "${plan.trendAggregation}".`,
+    );
+  }
+
+  if (
+    plan.formulaOperator !== undefined &&
+    !["multiply", "add", "subtract", "divide"].includes(plan.formulaOperator)
+  ) {
+    throw new Error(`Unsupported formula operator "${plan.formulaOperator}".`);
+  }
+
+  const filters = resolveFilters(plan.filters);
+  const populationFilters = plan.populationFilters
+    ? resolveFilters(plan.populationFilters)
+    : undefined;
+
+  // Deterministic, non-bypassable guard: for percentage queries, the
+  // denominator (populationFilters) must always be a subset of the
+  // numerator (filters). Otherwise numerator and denominator describe two
+  // different populations and the resulting percentage can exceed 100% or
+  // be otherwise meaningless. This runs on every plan that reaches
+  // execution, not just ones caught by the heuristic sanity check.
+  if (plan.operation === "percentage" && populationFilters?.length) {
+    const unmatched = filtersSubsetGaps(populationFilters, filters);
+    if (unmatched.length) {
+      throw new Error(
+        `Invalid percentage plan: the populationFilters clause on ` +
+          `"${unmatched[0].column}" is not also present in filters. The ` +
+          `denominator condition must be a subset of the numerator condition.`,
+      );
     }
-
-    return {
-      ...filter,
-      column,
-    };
-  });
+  }
 
   const limit =
     typeof plan.limit === "number" && Number.isFinite(plan.limit)
@@ -424,11 +787,16 @@ function validatePlan(
     secondColumn: resolve(plan.secondColumn),
     thirdColumn: resolve(plan.thirdColumn),
     filters,
+    populationFilters,
+    sortDirection:
+      plan.sortDirection === "asc"
+        ? "asc"
+        : plan.sortDirection === "desc"
+          ? "desc"
+          : undefined,
     limit,
   };
 }
-
-
 
 function extractJson(text: string): unknown {
   const cleaned = text
@@ -518,12 +886,20 @@ JSON shape:
   "tolerance": 0.01,
   "trendPeriod": "day|week|month|quarter|year",
   "trendAggregation": "sum|average|count",
+  "sortDirection": "asc|desc",
   "filters": [
     {
       "column": "ColumnName",
       "operator": ">",
       "value": 90,
       "secondValue": null
+    }
+  ],
+  "populationFilters": [
+    {
+      "column": "ColumnName",
+      "operator": "=",
+      "value": "West"
     }
   ],
   "limit": 10
@@ -548,20 +924,79 @@ Rules:
 - "unique", "distinct" => distinct.
 - "correlation", "relationship" => correlation.
 - "show/list/which records" => rows with a limit no greater than 20.
-- "trend", "over time", "by month", "by year" => trend when a date and
-  numeric column are available.
+- "trend", "over time", "by month", "by year" => trend when the needed date
+  column is available. For count trends ("how many records per month"), a
+  numeric targetColumn is NOT required.
+- Set trendPeriod explicitly from wording: "by day" => day, "by week" => week,
+  "by month" => month, "by quarter" => quarter, "by year" => year. For a
+  generic "over time" question, default to month.
 - For trend: if the question asks to "compare totals", "total X by year",
   "sum by month", etc, set trendAggregation="sum". If it asks for
-  "average X over time" or does not specify, set trendAggregation="average".
-  If it just asks "how many records per month", set trendAggregation="count".
+  "average X over time", set trendAggregation="average". If it asks
+  "how many records per month" (or equivalent count wording), set
+  trendAggregation="count" and do not require targetColumn.
 - "is X equal to Y times/plus/minus/divided by Z", "does X match Y * Z",
   "verify/check/validate that X = Y * Z" => formula_check, with
   targetColumn=X, secondColumn=Y, thirdColumn=Z, and formulaOperator set to
   multiply/add/subtract/divide based on the wording (default multiply).
+- CRITICAL — the target column and a filter's column are usually NOT the
+  same column. When a question asks for an aggregate ("average", "total",
+  "how many", "highest") "for/among/where/with" some OTHER condition
+  ("with more than X", "who joined after Y", "in region Z"), work out the
+  two parts independently:
+    1. TARGET first: which column's values does the question want
+       summarized or aggregated? That is targetColumn.
+    2. FILTERS second: every clause that restricts which rows count
+       ("more than", "at least", "below", "equal to", "in <category>",
+       "after <date>", etc) becomes its own entry in filters[], each with
+       its own column, operator, and value. Never fold a filter's column
+       into targetColumn, and never drop a filter just because it names a
+       different column than the target.
+  Worked example (illustrative column names only — always use the real
+  schema for the actual dataset):
+    Q: "What is the average Salary for employees with more than 10 years of
+        Experience?"
+    => { "operation": "average", "targetColumn": "Salary",
+         "filters": [{ "column": "Experience", "operator": ">", "value": 10 }] }
+  Another:
+    Q: "What is the total Revenue in the West region?"
+    => { "operation": "sum", "targetColumn": "Revenue",
+         "filters": [{ "column": "Region", "operator": "=", "value": "West" }] }
+- CRITICAL — "percentage of <subgroup>" questions need TWO different filter
+  sets, not one:
+    1. filters: the FULL condition — the subgroup clause AND the
+       criteria clause together (this is the numerator).
+    2. populationFilters: ONLY the subgroup-defining clause (this is the
+       denominator). Omit populationFilters entirely if the question does
+       not name a subgroup (then the denominator is the whole dataset).
+  Worked example:
+    Q: "What percentage of West employees have Performance_Score above 90?"
+    => { "operation": "percentage",
+         "filters": [
+           { "column": "Region", "operator": "=", "value": "West" },
+           { "column": "Performance_Score", "operator": ">", "value": 90 }
+         ],
+         "populationFilters": [
+           { "column": "Region", "operator": "=", "value": "West" }
+         ] }
+  Non-subgroup example (no populationFilters needed):
+    Q: "What percentage of records have a missing Email?"
+    => { "operation": "percentage",
+         "filters": [{ "column": "Email", "operator": "=", "value": null }] }
+- For grouped aggregates (group_count, group_sum, group_average):
+    - "highest", "most", "largest", "greatest", "best" => sortDirection: "desc" (default, can be omitted).
+    - "lowest", "least", "smallest", "fewest", "worst" => sortDirection: "asc".
+  Example:
+    Q: "Which department has the lowest average Performance_Score?"
+    => { "operation": "group_average", "groupBy": "Department",
+         "targetColumn": "Performance_Score", "sortDirection": "asc", "limit": 1 }
 - "give me an overview", "summarize the dataset", "describe the data",
-  "tell me about this dataset" => describe (no filters, no target column).
-  The server will compute the full statistical summary; you only need to
-  return { "operation": "describe" }.
+  "tell me about this dataset" => describe (no filters, no target column,
+  unless the question restricts to a subgroup, e.g. "describe West region
+  employees", in which case add the appropriate filters[]).
+  The server will compute the full statistical summary over the matching
+  rows; you only need to return { "operation": "describe" } plus any
+  filters implied by the question.
 - "find anomalies", "find outliers", "weird values", "unusual values",
   "anything look off/wrong" (with NO specific formula implied) => outliers.
   Leave targetColumn empty to check every numeric column, or set it to check
@@ -579,6 +1014,8 @@ Rules:
 - "below 90" => < 90.
 - "at most 90" => <= 90.
 - "equal to 90" => = 90.
+- Numbers may be spelled out in words ("more than ten years") — treat them
+  the same as digits ("more than 10 years").
 - Multiple conditions must ALL appear in filters.
 - If the user says "in West", "from West", or "West region" and a Region
   column exists, use Region = "West".
@@ -591,18 +1028,80 @@ DATASET SCHEMA:
 ${schema}
 `;
 
-  const response = await generateWithGemini([
+  type ChatMessage = Parameters<typeof generateWithGemini>[0][number];
+
+  const messages: ChatMessage[] = [
     { role: "system", content: prompt },
     { role: "user", content: question },
-  ]);
+  ];
 
+  const response = await generateWithGemini(messages);
   const parsed = extractJson(response);
 
   if (!isQueryPlan(parsed)) {
     throw new Error("A1.ai could not create a valid query plan.");
   }
 
-  return parsed;
+  // Deterministic, dataset-agnostic sanity check: does this plan actually
+  // match the question's wording? If not, give the model one corrective
+  // retry with the specific issue spelled out, rather than silently
+  // returning a plan that dropped a filter or aggregated the wrong column.
+  const issues = findPlanIssues(parsed, question, columns);
+
+  if (!issues.length) {
+    return parsed;
+  }
+
+  const correctionMessages: ChatMessage[] = [
+    ...messages,
+    { role: "assistant", content: JSON.stringify(parsed) },
+    {
+      role: "user",
+      content:
+        `That plan looks incorrect:\n${issues
+          .map((issue) => `- ${issue}`)
+          .join("\n")}\n\nRe-read the original question carefully — it may ` +
+        `reference two different columns (one to aggregate, one to filter ` +
+        `on), a subgroup vs. whole-dataset percentage, or a "lowest" vs ` +
+        `"highest" direction — and output a corrected JSON plan only.`,
+    },
+  ];
+
+  try {
+    const correctionResponse = await generateWithGemini(correctionMessages);
+    const corrected = extractJson(correctionResponse);
+
+    if (isQueryPlan(corrected)) {
+      // Don't just check that it parses — run the same heuristic check
+      // again. Gemini's "fix" could still miss the mark, so only accept it
+      // if it actually resolves the issues we flagged.
+      const correctedIssues = findPlanIssues(corrected, question, columns);
+
+      if (!correctedIssues.length) {
+        // Also confirm every column name it used actually resolves against
+        // the real schema, and that hard invariants (like the percentage
+        // subset rule) hold — catches a hallucinated/misspelled column
+        // name or a still-invalid percentage plan that findPlanIssues's
+        // text-matching alone wouldn't catch.
+        validatePlan(corrected, columns);
+        return corrected;
+      }
+    }
+  } catch {
+    // Falls through to the throw below — an error here (bad JSON, a
+    // validation failure, a network error) means the corrective retry
+    // didn't produce something usable either.
+  }
+
+  // The original plan was already flagged as wrong by findPlanIssues, and
+  // the corrective retry either failed outright or produced another plan
+  // that still doesn't check out. Silently returning the original,
+  // known-bad plan here would mean shipping an answer we already know is
+  // likely wrong — surface an error instead so the caller can retry or
+  // rephrase, rather than getting a confident-looking wrong number.
+  throw new Error(
+    "A1.ai could not create a reliable query plan for this question. Please try rephrasing it.",
+  );
 }
 
 export function executeQueryPlan(
@@ -655,6 +1154,16 @@ export function executeQueryPlan(
 
     case "sum": {
       const values = numericValues(filteredRows, target!);
+
+      if (!values.length) {
+        return {
+          plan,
+          matchedRows: filteredRows.length,
+          result: { column: target, count: 0, sum: null },
+          answer: `There are no numeric **${target}** values in the matching records.`,
+        };
+      }
+
       const sum = values.reduce((total, value) => total + value, 0);
 
       return {
@@ -757,10 +1266,7 @@ export function executeQueryPlan(
         count: filteredRows.filter((row) => isMissing(row[column])).length,
       }));
 
-      const totalMissing = missing.reduce(
-        (sum, item) => sum + item.count,
-        0,
-      );
+      const totalMissing = missing.reduce((sum, item) => sum + item.count, 0);
 
       return {
         plan,
@@ -796,30 +1302,47 @@ export function executeQueryPlan(
         }
       }
 
-      const grouped = Array.from(groups.values()).map((group) => {
-        if (plan.operation === "group_count") {
+      type GroupResult = { group: unknown; value: number; records?: number };
+
+      const grouped = Array.from(groups.values())
+        .map((group): GroupResult | null => {
+          if (plan.operation === "group_count") {
+            return {
+              group: group.label,
+              value: group.rows.length,
+            };
+          }
+
+          const values = numericValues(group.rows, target!);
+
+          // A group with no numeric values has no sum/average. Reporting 0
+          // would make missing data look like a real measurement and could
+          // incorrectly make the group appear lowest.
+          if (
+            (plan.operation === "group_average" ||
+              plan.operation === "group_sum") &&
+            !values.length
+          ) {
+            return null;
+          }
+
+          const value =
+            plan.operation === "group_sum"
+              ? values.reduce((sum, item) => sum + item, 0)
+              : values.reduce((sum, item) => sum + item, 0) / values.length;
+
           return {
             group: group.label,
-            value: group.rows.length,
+            value: round(value),
+            records: group.rows.length,
           };
-        }
+        })
+        .filter((item): item is GroupResult => item !== null);
 
-        const values = numericValues(group.rows, target!);
-        const value =
-          plan.operation === "group_sum"
-            ? values.reduce((sum, item) => sum + item, 0)
-            : values.length
-              ? values.reduce((sum, item) => sum + item, 0) / values.length
-              : 0;
-
-        return {
-          group: group.label,
-          value: round(value),
-          records: group.rows.length,
-        };
-      });
-
-      grouped.sort((a, b) => b.value - a.value);
+      const ascending = plan.sortDirection === "asc";
+      grouped.sort((a, b) =>
+        ascending ? a.value - b.value : b.value - a.value,
+      );
 
       const limited = grouped.slice(0, plan.limit);
 
@@ -848,7 +1371,7 @@ export function executeQueryPlan(
           groups: limited,
         },
         answer: limited.length
-          ? `Here are the top groups by ${operationLabel}:\n\n${lines}`
+          ? `Here are the ${ascending ? "lowest" : "top"} groups by ${operationLabel}:\n\n${lines}`
           : "No groups were found for the requested criteria.",
       };
     }
@@ -870,9 +1393,7 @@ export function executeQueryPlan(
         );
 
       values.sort((a, b) =>
-        plan.operation === "top"
-          ? b.value - a.value
-          : a.value - b.value,
+        plan.operation === "top" ? b.value - a.value : a.value - b.value,
       );
 
       const limited = values.slice(0, plan.limit);
@@ -900,20 +1421,41 @@ export function executeQueryPlan(
     }
 
     case "percentage": {
-      const total = rows.length;
+      // The denominator is the subgroup population (populationFilters) when
+      // provided, so "what percentage of West employees..." divides by West
+      // employees, not the whole dataset. Falls back to the whole dataset
+      // for backward compatibility when populationFilters is omitted.
+      const totalPopulation = plan.populationFilters?.length
+        ? applyFilters(rows, plan.populationFilters).length
+        : rows.length;
       const matching = filteredRows.length;
-      const percentage = total ? (matching / total) * 100 : 0;
+
+      if (!totalPopulation) {
+        return {
+          plan,
+          matchedRows: matching,
+          result: {
+            matchingRecords: matching,
+            totalRecords: 0,
+            percentage: null,
+          },
+          answer:
+            "The denominator population contains no records, so the percentage cannot be calculated.",
+        };
+      }
+
+      const percentage = (matching / totalPopulation) * 100;
 
       return {
         plan,
         matchedRows: matching,
         result: {
           matchingRecords: matching,
-          totalRecords: total,
+          totalRecords: totalPopulation,
           percentage: round(percentage),
         },
         answer: `**${formatNumber(matching)}** of **${formatNumber(
-          total,
+          totalPopulation,
         )}** records match the criteria, which is **${formatNumber(
           percentage,
         )}%**.`,
@@ -945,10 +1487,8 @@ export function executeQueryPlan(
         };
       }
 
-      const xMean =
-        pairs.reduce((sum, pair) => sum + pair.x, 0) / pairs.length;
-      const yMean =
-        pairs.reduce((sum, pair) => sum + pair.y, 0) / pairs.length;
+      const xMean = pairs.reduce((sum, pair) => sum + pair.x, 0) / pairs.length;
+      const yMean = pairs.reduce((sum, pair) => sum + pair.y, 0) / pairs.length;
 
       let numerator = 0;
       let xDenominator = 0;
@@ -963,12 +1503,24 @@ export function executeQueryPlan(
         yDenominator += yDiff ** 2;
       }
 
-      const denominator = Math.sqrt(
-        xDenominator * yDenominator,
-      );
+      const denominator = Math.sqrt(xDenominator * yDenominator);
 
-      const correlation =
-        denominator === 0 ? 0 : numerator / denominator;
+      if (denominator === 0) {
+        return {
+          plan,
+          matchedRows: filteredRows.length,
+          result: {
+            columnA: target,
+            columnB: plan.secondColumn,
+            correlation: null,
+          },
+          answer:
+            `Correlation between **${target}** and **${plan.secondColumn}** is undefined because ` +
+            "at least one column has no variation in the matching records.",
+        };
+      }
+
+      const correlation = numerator / denominator;
 
       return {
         plan,
@@ -985,14 +1537,17 @@ export function executeQueryPlan(
     }
 
     case "trend": {
-      if (!target || !plan.dateColumn) {
-        throw new Error(
-          "Trend analysis requires a date column and numeric target column.",
-        );
-      }
-
       const period = plan.trendPeriod ?? "month";
       const aggregation = plan.trendAggregation ?? "average";
+
+      if (!plan.dateColumn) {
+        throw new Error("Trend analysis requires a date column.");
+      }
+
+      if (aggregation !== "count" && !target) {
+        throw new Error("Trend sum/average requires a numeric target column.");
+      }
+
       const buckets = new Map<string, number[]>();
 
       const bucketDate = (value: unknown): string | null => {
@@ -1011,20 +1566,19 @@ export function executeQueryPlan(
           return `${year}-Q${Math.floor(date.getMonth() / 3) + 1}`;
         }
 
-        const firstDay = new Date(year, 0, 1);
-        const diffDays = Math.floor(
-          (date.getTime() - firstDay.getTime()) / 86400000,
-        );
-        const week = Math.floor(diffDays / 7) + 1;
-
-        return `${year}-W${String(week).padStart(2, "0")}`;
+        const { isoYear, isoWeek } = getIsoWeek(date);
+        return `${isoYear}-W${String(isoWeek).padStart(2, "0")}`;
       };
 
       for (const row of filteredRows) {
         const bucket = bucketDate(row[plan.dateColumn]);
-        const value = toNumber(row[target]);
+        if (!bucket) continue;
 
-        if (!bucket || value === null) continue;
+        // Count trends count every row with a valid date. They do not require
+        // a numeric target column.
+        const value = aggregation === "count" ? 1 : toNumber(row[target!]);
+
+        if (value === null) continue;
 
         const values = buckets.get(bucket);
 
@@ -1071,16 +1625,10 @@ export function executeQueryPlan(
       const last = points[points.length - 1].value;
 
       const changePercentage =
-        first === 0
-          ? null
-          : round(((last - first) / Math.abs(first)) * 100);
+        first === 0 ? null : round(((last - first) / Math.abs(first)) * 100);
 
       const direction =
-        last > first
-          ? "increasing"
-          : last < first
-            ? "decreasing"
-            : "stable";
+        last > first ? "increasing" : last < first ? "decreasing" : "stable";
 
       const aggregationLabel =
         aggregation === "sum"
@@ -1165,7 +1713,12 @@ export function executeQueryPlan(
         const difference = Math.abs(expected - actual);
 
         if (difference > tolerance) {
-          mismatches.push({ row, expected: round(expected), actual, difference: round(difference) });
+          mismatches.push({
+            row,
+            expected: round(expected),
+            actual,
+            difference: round(difference),
+          });
         }
       }
 
@@ -1235,8 +1788,7 @@ export function executeQueryPlan(
         );
       }
 
-      const outlierLimit =
-        typeof plan.limit === "number" ? plan.limit : 5;
+      const outlierLimit = typeof plan.limit === "number" ? plan.limit : 5;
 
       const columnResults = numericProfiles.map((profile) => {
         const entries = filteredRows
@@ -1258,7 +1810,9 @@ export function executeQueryPlan(
         const upperFence = q3 + 1.5 * iqr;
 
         const outlierEntries = entries
-          .filter((entry) => entry.value < lowerFence || entry.value > upperFence)
+          .filter(
+            (entry) => entry.value < lowerFence || entry.value > upperFence,
+          )
           .map((entry) => ({
             row: entry.row,
             value: entry.value,
@@ -1293,9 +1847,7 @@ export function executeQueryPlan(
         );
       } else {
         lines.push(
-          `Found **${formatNumber(
-            totalOutliers,
-          )}** statistical outlier${
+          `Found **${formatNumber(totalOutliers)}** statistical outlier${
             totalOutliers === 1 ? "" : "s"
           } in ${scope} (values beyond 1.5\u00d7 the interquartile range).`,
         );
@@ -1347,7 +1899,9 @@ export function executeQueryPlan(
       const categoricalProfiles = profiles.filter(
         (profile) => profile.kind === "categorical",
       );
-      const dateProfiles = profiles.filter((profile) => profile.kind === "date");
+      const dateProfiles = profiles.filter(
+        (profile) => profile.kind === "date",
+      );
 
       // Top correlations among all numeric column pairs.
       const correlations: { a: string; b: string; correlation: number }[] = [];
@@ -1358,7 +1912,11 @@ export function executeQueryPlan(
           const correlation = pearsonCorrelation(filteredRows, colA, colB);
 
           if (correlation !== null) {
-            correlations.push({ a: colA, b: colB, correlation: round(correlation) });
+            correlations.push({
+              a: colA,
+              b: colB,
+              correlation: round(correlation),
+            });
           }
         }
       }
@@ -1395,8 +1953,11 @@ export function executeQueryPlan(
 
       const mostSkewed = categoricalSkew[0] ?? null;
 
-      // Trend for the first numeric column (excluding ID-like columns) over
-      // the first date column, bucketed by month.
+      // Trend: bucket every non-ID-like numeric column by month against the
+      // first date column, then report on whichever one actually shows the
+      // strongest relationship with time (bucket order vs. bucket average),
+      // rather than arbitrarily reporting on whichever numeric column
+      // happens to appear first in the schema.
       let trendSummary: {
         column: string;
         dateColumn: string;
@@ -1406,41 +1967,73 @@ export function executeQueryPlan(
 
       if (dateProfiles.length && numericProfiles.length) {
         const dateColumn = dateProfiles[0].column.name;
-        const numericCandidate =
-          numericProfiles.find((profile) => !/id$/i.test(profile.column.name)) ??
-          numericProfiles[0];
+        const idLikeExcluded = numericProfiles.filter(
+          (profile) => !/id$/i.test(profile.column.name),
+        );
+        const candidates = idLikeExcluded.length
+          ? idLikeExcluded
+          : numericProfiles;
 
-        const buckets = new Map<string, number[]>();
-        for (const row of filteredRows) {
-          const date = toDate(row[dateColumn]);
-          const value = toNumber(row[numericCandidate.column.name]);
-          if (!date || value === null) continue;
+        let best: {
+          column: string;
+          points: { period: string; value: number }[];
+          strength: number;
+        } | null = null;
 
-          const key = `${date.getFullYear()}-${String(
-            date.getMonth() + 1,
-          ).padStart(2, "0")}`;
-          const bucket = buckets.get(key);
-          if (bucket) bucket.push(value);
-          else buckets.set(key, [value]);
+        for (const profile of candidates) {
+          const buckets = new Map<string, number[]>();
+          for (const row of filteredRows) {
+            const date = toDate(row[dateColumn]);
+            const value = toNumber(row[profile.column.name]);
+            if (!date || value === null) continue;
+
+            const key = `${date.getFullYear()}-${String(
+              date.getMonth() + 1,
+            ).padStart(2, "0")}`;
+            const bucket = buckets.get(key);
+            if (bucket) bucket.push(value);
+            else buckets.set(key, [value]);
+          }
+
+          const points = Array.from(buckets.entries())
+            .map(([period, values]) => ({
+              period,
+              value:
+                values.reduce((sum, item) => sum + item, 0) / values.length,
+            }))
+            .sort((a, b) => a.period.localeCompare(b.period));
+
+          if (points.length < 2) continue;
+
+          const strength = Math.abs(
+            correlationOfSeries(
+              points.map((_, index) => index),
+              points.map((point) => point.value),
+            ),
+          );
+
+          if (!best || strength > best.strength) {
+            best = { column: profile.column.name, points, strength };
+          }
         }
 
-        const points = Array.from(buckets.entries())
-          .map(([period, values]) => ({
-            period,
-            value: values.reduce((sum, item) => sum + item, 0) / values.length,
-          }))
-          .sort((a, b) => a.period.localeCompare(b.period));
-
-        if (points.length >= 2) {
-          const first = points[0].value;
-          const last = points[points.length - 1].value;
+        if (best) {
+          const first = best.points[0].value;
+          const last = best.points[best.points.length - 1].value;
           const changePercentage =
-            first === 0 ? null : round(((last - first) / Math.abs(first)) * 100);
+            first === 0
+              ? null
+              : round(((last - first) / Math.abs(first)) * 100);
 
           trendSummary = {
-            column: numericCandidate.column.name,
+            column: best.column,
             dateColumn,
-            direction: last > first ? "increasing" : last < first ? "decreasing" : "stable",
+            direction:
+              last > first
+                ? "increasing"
+                : last < first
+                  ? "decreasing"
+                  : "stable",
             changePercentage,
           };
         }
@@ -1542,9 +2135,12 @@ export function executeQueryPlan(
     }
 
     case "describe": {
-      const totalRows = rows.length;
+      // Use filteredRows (not the raw dataset) so a filtered description
+      // ("describe West region employees") reports on the matching subset
+      // rather than silently falling back to the whole dataset.
+      const totalRows = filteredRows.length;
 
-      const columnProfiles = profileColumns(rows, columns);
+      const columnProfiles = profileColumns(filteredRows, columns);
 
       const numericProfiles = columnProfiles.filter(
         (profile) => profile.kind === "numeric",
@@ -1580,17 +2176,24 @@ export function executeQueryPlan(
           counts.set(key, (counts.get(key) ?? 0) + 1);
         }
 
-        const sorted = Array.from(counts.entries()).sort(
-          (a, b) => b[1] - a[1],
-        );
+        const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
         const [topValue, topCount] = sorted[0] ?? [null, 0];
+
+        // Percentage is relative to this column's own non-missing
+        // population (the same number shown as "records" next to it),
+        // not the full dataset row count — otherwise a column with
+        // missing values reports a percentage inconsistent with the
+        // "N records / M missing" figure displayed alongside it.
+        const nonMissingCount = profile.nonMissing.length;
 
         return {
           column: profile.column.name,
           uniqueCount: counts.size,
           topValue,
           topCount,
-          topPercentage: totalRows ? round((topCount / totalRows) * 100) : 0,
+          topPercentage: nonMissingCount
+            ? round((topCount / nonMissingCount) * 100)
+            : 0,
         };
       });
 
@@ -1726,10 +2329,10 @@ export function executeQueryPlan(
           dateColumns: dateSummary,
           totalMissing,
           completeness,
-          columns: columns.map((column) => ({
-            name: column.name,
-            type: column.type,
-            missing: column.missing,
+          columns: columnProfiles.map((profile) => ({
+            name: profile.column.name,
+            type: profile.column.type,
+            missing: profile.missingCount,
           })),
         },
         answer: lines.join("\n"),

@@ -228,6 +228,18 @@ export default function AISmartChat() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // ------------------------------------------------------------
+  // Collapse the sidebar by default on mobile so it opens as an
+  // overlay drawer instead of squeezing the header/chat area.
+  // Desktop keeps its existing default (open).
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  }, []);
+
+  // ------------------------------------------------------------
   // Scroll to bottom
   // ------------------------------------------------------------
 
@@ -320,6 +332,10 @@ export default function AISmartChat() {
     setMessages([]);
     setInput("");
     setTyping(false);
+
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
   const handleDeleteChat = async (chatId: string) => {
@@ -794,9 +810,20 @@ export default function AISmartChat() {
       {/* Sidebar */}
       {/* ------------------------------------------------------ */}
 
+      {/* Mobile-only backdrop, dims the chat behind the drawer */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+          aria-hidden="true"
+        />
+      )}
+
       <aside
-        className={`relative z-20 h-full shrink-0 border-r border-zinc-100/10 bg-zinc-900/40 backdrop-blur-2xl flex flex-col transition-all duration-300 shadow-2xl shadow-black/40 ${
-          sidebarOpen ? "w-64" : "w-0 overflow-hidden"
+        className={`fixed md:relative top-0 left-0 z-40 md:z-20 h-full w-72 sm:w-64 shrink-0 border-r border-zinc-100/10 bg-zinc-900/95 md:bg-zinc-900/40 backdrop-blur-2xl flex flex-col transition-transform md:transition-all duration-300 shadow-2xl shadow-black/40 ${
+          sidebarOpen
+            ? "translate-x-0 md:w-64"
+            : "-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden"
         }`}
       >
         {/* subtle top glow accent */}
@@ -850,7 +877,13 @@ export default function AISmartChat() {
               return (
                 <div
                   key={chat.id}
-                  onClick={() => setSelectedChatId(chat.id)}
+                  onClick={() => {
+                    setSelectedChatId(chat.id);
+
+                    if (typeof window !== "undefined" && window.innerWidth < 768) {
+                      setSidebarOpen(false);
+                    }
+                  }}
                   className={`relative w-full text-left group flex items-start gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 overflow-hidden ${
                     active
                       ? "bg-white/[0.07] border border-white/10 shadow-lg shadow-purple-500/10"
@@ -925,14 +958,15 @@ export default function AISmartChat() {
 
       <div className="relative z-10 flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="relative shrink-0 flex items-center justify-between px-6 py-4 border-b border-zinc-100/10 bg-zinc-900/40 backdrop-blur-2xl shadow-lg shadow-black/20">
+        <header className="relative shrink-0 flex items-center justify-between gap-2 px-3 py-3 sm:px-6 sm:py-4 border-b border-zinc-100/10 bg-zinc-900/40 backdrop-blur-2xl shadow-lg shadow-black/20">
           {/* gradient underline accent */}
           <span className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-400/40 to-transparent" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className="text-zinc-500 hover:text-zinc-200 transition-all duration-200 hover:scale-110 active:scale-95"
+              className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-all duration-200 hover:scale-110 active:scale-95"
+              aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
               {sidebarOpen ? (
                 <PanelLeftClose className="w-5 h-5" />
@@ -941,36 +975,37 @@ export default function AISmartChat() {
               )}
             </button>
 
-            <div>
-              <div className="text-base font-mono uppercase tracking-widest text-teal-400">
+            <div className="min-w-0">
+              <div className="hidden sm:block text-base font-mono uppercase tracking-widest text-teal-400">
                 Talk it through
               </div>
 
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-300 bg-clip-text text-transparent leading-tight">
+              <h1 className="text-base sm:text-xl font-semibold bg-gradient-to-r from-zinc-50 via-zinc-100 to-zinc-300 bg-clip-text text-transparent leading-tight truncate">
                 AI Smart Chat
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Dashboard button — same shape/behavior as the AI Data
                Analyst header's back link: left arrow + label, subtle
                bordered pill, hover border/text lightens and it nudges
                left, matching that page's .dash-link treatment. */}
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md text-base font-medium text-zinc-300 transition-all duration-200 hover:text-zinc-100 hover:border-purple-400/50 hover:-translate-x-0.5"
+              className="flex items-center gap-1.5 px-2.5 py-2 sm:px-3.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md text-sm sm:text-base font-medium text-zinc-300 transition-all duration-200 hover:text-zinc-100 hover:border-purple-400/50 hover:-translate-x-0.5"
             >
-              <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2.2} />
-              Dashboard
+              <ArrowLeft className="w-3.5 h-3.5 shrink-0" strokeWidth={2.2} />
+              <span className="hidden sm:inline">Dashboard</span>
             </Link>
 
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-base font-mono text-zinc-400 shadow-inner">
-              <span className="relative flex h-1.5 w-1.5">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-xs sm:text-base font-mono text-zinc-400 shadow-inner">
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-60" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-400" />
               </span>
-              AI connected
+              <span className="hidden sm:inline">AI connected</span>
+              <span className="sm:hidden">Live</span>
             </div>
           </div>
         </header>
@@ -980,7 +1015,7 @@ export default function AISmartChat() {
         {/* -------------------------------------------------- */}
 
         <div ref={scrollRef} className="chat-scroll flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
+          <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8 flex flex-col gap-6">
             {loadingMessages ? (
               <div className="text-center text-lg text-zinc-500 py-10">
                 Loading conversation...
@@ -1059,7 +1094,7 @@ export default function AISmartChat() {
         {/* Input */}
         {/* -------------------------------------------------- */}
 
-        <div className="shrink-0 px-6 pb-6 pt-2">
+        <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
           <div className="max-w-3xl mx-auto">
             <div className="input-glow-box relative shadow-lg shadow-black/30">
               <div className="relative flex items-end gap-2 px-3 py-2">
