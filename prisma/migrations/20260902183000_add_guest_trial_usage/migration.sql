@@ -1,0 +1,3 @@
+ALTER TABLE "User"
+ADD COLUMN "guestSmartChatMessagesUsed" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "guestAnalystUploadsUsed" INTEGER NOT NULL DEFAULT 0;

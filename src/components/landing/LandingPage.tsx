@@ -145,23 +145,31 @@ interface Feature {
 }
 
 function FeatureCard({ f, index }: { f: Feature; index: number }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const onMove = (e: ReactMouseEvent<HTMLDivElement>) => {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+
+  const href = f.id === "chat" ? "/chat" : "/analyst";
+
+  const onMove = (e: ReactMouseEvent<HTMLAnchorElement>) => {
     const el = ref.current;
     if (!el) return;
+
     const r = el.getBoundingClientRect();
     el.style.setProperty("--mx", `${e.clientX - r.left}px`);
     el.style.setProperty("--my", `${e.clientY - r.top}px`);
   };
+
   return (
-    <div
+    <Link
       ref={ref}
+      href={href}
       onMouseMove={onMove}
       className={`feature-card accent-${f.accent}`}
       data-reveal
       style={{ transitionDelay: `${index * 70}ms` }}
+      aria-label={`Open ${f.title}`}
     >
       <div className="feature-spot" />
+
       <div className="feature-icon">
         <svg
           viewBox="0 0 24 24"
@@ -174,10 +182,11 @@ function FeatureCard({ f, index }: { f: Feature; index: number }) {
           {f.icon}
         </svg>
       </div>
+
       <h3>{f.title}</h3>
       <p>{f.desc}</p>
       <div className="feature-corner" />
-    </div>
+    </Link>
   );
 }
 

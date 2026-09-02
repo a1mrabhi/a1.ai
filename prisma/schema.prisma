@@ -14,6 +14,12 @@ model User {
   name     String?
   imageUrl String?
 
+  // Persistent browser-level guest trial usage. These counters remain with
+  // the anonymous session even after its chats/datasets are claimed by a
+  // signed-in account, preventing logout/refresh/new-tab resets.
+  guestSmartChatMessagesUsed Int @default(0)
+  guestAnalystUploadsUsed    Int @default(0)
+
   chats           Chat[]
   documents       Document[]
   analystDatasets AnalystDataset[]

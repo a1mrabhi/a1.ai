@@ -8,7 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { useClerk, useUser, UserButton } from "@clerk/nextjs";
 import type {
   DatasetAnalysis,
   DatasetColumn,
@@ -220,7 +220,11 @@ function SendIcon() {
 /* ------------------------------------------------------------------ */
 
 export default function AnalystPage() {
+  const { isLoaded, isSignedIn } = useUser();
+  const { openSignIn, openSignUp } = useClerk();
+
   const inputRef = useRef<HTMLInputElement>(null);
+  const guestClaimAttemptedRef = useRef(false);
   const uploadCardRef = useRef<HTMLDivElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -231,6 +235,7 @@ export default function AnalystPage() {
   const [analyzing, setAnalyzing] = useState(false);
 
   const [analysisError, setAnalysisError] = useState("");
+  const [showGuestLoginPrompt, setShowGuestLoginPrompt] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<DatasetAnalysis | null>(
     null,
   );
@@ -238,6 +243,26 @@ export default function AnalystPage() {
     question: string;
     answer: string;
   } | null>(null);
+
+  // If the guest reaches the login flow from the Analyst, transfer the
+  // anonymous dataset/conversation to the authenticated account before the
+  // user continues. The transfer is server-side and survives refreshes/tabs.
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || guestClaimAttemptedRef.current) return;
+
+    guestClaimAttemptedRef.current = true;
+
+    void fetch("/api/guest/claim", { method: "POST" })
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.error || "Could not restore the guest session.");
+        }
+      })
+      .catch((claimError) => {
+        console.error("Analyst guest session claim error:", claimError);
+      });
+  }, [isLoaded, isSignedIn]);
 
   useReveal(dataset);
 
@@ -287,6 +312,20 @@ export default function AnalystPage() {
       });
 
       const data = await response.json();
+
+      if (response.status === 429 && data.code === "GUEST_LIMIT_REACHED") {
+        // The second upload is rejected by the server. Clear the selected file
+        // immediately so closing the login prompt returns to the real upload
+        // state instead of leaving the page stuck on “Understanding your dataset…”.
+        setFile(null);
+        setDataset(null);
+        setAnalysisResult(null);
+        setInitialChat(null);
+        setError("");
+        if (inputRef.current) inputRef.current.value = "";
+        setShowGuestLoginPrompt(true);
+        return;
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Unable to process the dataset.");
@@ -386,6 +425,119 @@ export default function AnalystPage() {
   return (
     <>
       <style>{CSS}</style>
+
+      <style>{`
+        @keyframes guestPromptIn {
+          from { opacity: 0; transform: translateY(12px) scale(.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .guest-prompt-overlay {
+          position: fixed; inset: 0; z-index: 100; display: flex; align-items: center;
+          justify-content: center; padding: 20px; background: rgba(2,4,10,.72);
+          backdrop-filter: blur(10px);
+        }
+        .guest-prompt-card {
+          width: min(440px,100%); position: relative; overflow: hidden; border-radius:24px;
+          border:1px solid rgba(255,200,87,.28);
+          background:
+            radial-gradient(360px circle at 15% 0%, rgba(255,200,87,.13), transparent 62%),
+            radial-gradient(300px circle at 100% 100%, rgba(140,124,240,.12), transparent 60%),
+            rgba(15,17,24,.97);
+          box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 45px rgba(255,200,87,.10);
+          animation:guestPromptIn .24s cubic-bezier(.16,1,.3,1) both;
+        }
+        .guest-prompt-close {
+          position:absolute; top:14px; right:14px; width:34px; height:34px; display:grid;
+          place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,.08);
+          background:rgba(255,255,255,.04); color:#a1a1aa; cursor:pointer; transition:all .2s ease;
+        }
+        .guest-prompt-close:hover { color:#fff; background:rgba(255,255,255,.09); }
+        .guest-prompt-body { padding:34px 30px 28px; text-align:center; }
+        .guest-prompt-icon {
+          width:58px; height:58px; margin:0 auto 18px; display:grid; place-items:center; border-radius:18px;
+          color:#ffd77a; border:1px solid rgba(255,200,87,.28);
+          background:linear-gradient(135deg,rgba(255,200,87,.16),rgba(140,124,240,.10));
+          box-shadow:0 12px 35px rgba(255,200,87,.10);
+        }
+        .guest-prompt-eyebrow { margin:0 0 7px; color:#ffc857; font:600 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase; }
+        .guest-prompt-title { margin:0; color:#fafafa; font-size:22px; line-height:1.25; font-weight:700; }
+        .guest-prompt-text { margin:10px auto 0; max-width:350px; color:#a1a1aa; font-size:14px; line-height:1.65; }
+        .guest-prompt-actions { display:flex; gap:10px; margin-top:24px; }
+        .guest-prompt-primary,.guest-prompt-secondary { flex:1; min-height:44px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s ease; }
+        .guest-prompt-primary { border:1px solid rgba(255,200,87,.42); color:#111827; background:linear-gradient(135deg,#ffc857,#8c7cf0); box-shadow:0 10px 28px rgba(255,200,87,.16); }
+        .guest-prompt-primary:hover { transform:translateY(-1px); filter:brightness(1.06); }
+        .guest-prompt-secondary { border:1px solid rgba(255,255,255,.10); color:#d4d4d8; background:rgba(255,255,255,.045); }
+        .guest-prompt-secondary:hover { background:rgba(255,255,255,.08); color:#fff; }
+        .guest-prompt-note { margin:13px 0 0; color:#52525b; font-size:11px; }
+        @media(max-width:520px){ .guest-prompt-body{padding:30px 20px 22px}.guest-prompt-actions{flex-direction:column}.guest-prompt-primary,.guest-prompt-secondary{width:100%} }
+      `}</style>
+
+      {showGuestLoginPrompt && !isSignedIn && (
+        <div
+          className="guest-prompt-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="guest-analyst-prompt-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) window.location.href = "/dashboard";
+          }}
+        >
+          <div className="guest-prompt-card">
+            <button
+              type="button"
+              className="guest-prompt-close"
+              onClick={() => { window.location.href = "/dashboard"; }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className="guest-prompt-body">
+              <div className="guest-prompt-icon" aria-hidden="true">
+                <SparkleIcon />
+              </div>
+              <p className="guest-prompt-eyebrow">AI Data Analyst</p>
+              <h2 id="guest-analyst-prompt-title" className="guest-prompt-title">
+                Ready for more AI?
+              </h2>
+              <p className="guest-prompt-text">
+                You’ve used your free AI Data Analyst analysis. Log in to continue
+                analyzing your data and keep your workspace history.
+              </p>
+              <div className="guest-prompt-actions">
+                <button
+                  type="button"
+                  className="guest-prompt-primary"
+                  onClick={() => {
+                    setShowGuestLoginPrompt(false);
+                    openSignIn();
+                  }}
+                >
+                  Yes, log in
+                </button>
+                <button
+                  type="button"
+                  className="guest-prompt-secondary"
+                  onClick={() => {
+                    setShowGuestLoginPrompt(false);
+                    openSignUp();
+                  }}
+                >
+                  Create account
+                </button>
+              </div>
+              <p className="guest-prompt-note">Your guest dataset will be preserved.</p>
+              <button
+                type="button"
+                className="guest-prompt-secondary"
+                style={{ width: "100%", marginTop: 10 }}
+                onClick={() => { window.location.href = "/dashboard"; }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grain" aria-hidden="true" />
 

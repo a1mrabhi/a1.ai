@@ -20,8 +20,20 @@ export type UserModel = runtime.Types.Result.DefaultSelection<Prisma.$UserPayloa
 
 export type AggregateUser = {
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
+}
+
+export type UserAvgAggregateOutputType = {
+  guestSmartChatMessagesUsed: number | null
+  guestAnalystUploadsUsed: number | null
+}
+
+export type UserSumAggregateOutputType = {
+  guestSmartChatMessagesUsed: number | null
+  guestAnalystUploadsUsed: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -30,6 +42,8 @@ export type UserMinAggregateOutputType = {
   email: string | null
   name: string | null
   imageUrl: string | null
+  guestSmartChatMessagesUsed: number | null
+  guestAnalystUploadsUsed: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -40,6 +54,8 @@ export type UserMaxAggregateOutputType = {
   email: string | null
   name: string | null
   imageUrl: string | null
+  guestSmartChatMessagesUsed: number | null
+  guestAnalystUploadsUsed: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -50,11 +66,23 @@ export type UserCountAggregateOutputType = {
   email: number
   name: number
   imageUrl: number
+  guestSmartChatMessagesUsed: number
+  guestAnalystUploadsUsed: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
+
+export type UserAvgAggregateInputType = {
+  guestSmartChatMessagesUsed?: true
+  guestAnalystUploadsUsed?: true
+}
+
+export type UserSumAggregateInputType = {
+  guestSmartChatMessagesUsed?: true
+  guestAnalystUploadsUsed?: true
+}
 
 export type UserMinAggregateInputType = {
   id?: true
@@ -62,6 +90,8 @@ export type UserMinAggregateInputType = {
   email?: true
   name?: true
   imageUrl?: true
+  guestSmartChatMessagesUsed?: true
+  guestAnalystUploadsUsed?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -72,6 +102,8 @@ export type UserMaxAggregateInputType = {
   email?: true
   name?: true
   imageUrl?: true
+  guestSmartChatMessagesUsed?: true
+  guestAnalystUploadsUsed?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -82,6 +114,8 @@ export type UserCountAggregateInputType = {
   email?: true
   name?: true
   imageUrl?: true
+  guestSmartChatMessagesUsed?: true
+  guestAnalystUploadsUsed?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -125,6 +159,18 @@ export type UserAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: UserAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: UserSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: UserMinAggregateInputType
@@ -155,6 +201,8 @@ export type UserGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: UserCountAggregateInputType | true
+  _avg?: UserAvgAggregateInputType
+  _sum?: UserSumAggregateInputType
   _min?: UserMinAggregateInputType
   _max?: UserMaxAggregateInputType
 }
@@ -165,9 +213,13 @@ export type UserGroupByOutputType = {
   email: string
   name: string | null
   imageUrl: string | null
+  guestSmartChatMessagesUsed: number
+  guestAnalystUploadsUsed: number
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
 }
@@ -196,6 +248,8 @@ export type UserWhereInput = {
   email?: Prisma.StringFilter<"User"> | string
   name?: Prisma.StringNullableFilter<"User"> | string | null
   imageUrl?: Prisma.StringNullableFilter<"User"> | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFilter<"User"> | number
+  guestAnalystUploadsUsed?: Prisma.IntFilter<"User"> | number
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   chats?: Prisma.ChatListRelationFilter
@@ -209,6 +263,8 @@ export type UserOrderByWithRelationInput = {
   email?: Prisma.SortOrder
   name?: Prisma.SortOrderInput | Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   chats?: Prisma.ChatOrderByRelationAggregateInput
@@ -225,6 +281,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   email?: Prisma.StringFilter<"User"> | string
   name?: Prisma.StringNullableFilter<"User"> | string | null
   imageUrl?: Prisma.StringNullableFilter<"User"> | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFilter<"User"> | number
+  guestAnalystUploadsUsed?: Prisma.IntFilter<"User"> | number
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   chats?: Prisma.ChatListRelationFilter
@@ -238,11 +296,15 @@ export type UserOrderByWithAggregationInput = {
   email?: Prisma.SortOrder
   name?: Prisma.SortOrderInput | Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
+  _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
   _min?: Prisma.UserMinOrderByAggregateInput
+  _sum?: Prisma.UserSumOrderByAggregateInput
 }
 
 export type UserScalarWhereWithAggregatesInput = {
@@ -254,6 +316,8 @@ export type UserScalarWhereWithAggregatesInput = {
   email?: Prisma.StringWithAggregatesFilter<"User"> | string
   name?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   imageUrl?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntWithAggregatesFilter<"User"> | number
+  guestAnalystUploadsUsed?: Prisma.IntWithAggregatesFilter<"User"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -264,6 +328,8 @@ export type UserCreateInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   chats?: Prisma.ChatCreateNestedManyWithoutUserInput
@@ -277,6 +343,8 @@ export type UserUncheckedCreateInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   chats?: Prisma.ChatUncheckedCreateNestedManyWithoutUserInput
@@ -290,6 +358,8 @@ export type UserUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chats?: Prisma.ChatUpdateManyWithoutUserNestedInput
@@ -303,6 +373,8 @@ export type UserUncheckedUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chats?: Prisma.ChatUncheckedUpdateManyWithoutUserNestedInput
@@ -316,6 +388,8 @@ export type UserCreateManyInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -326,6 +400,8 @@ export type UserUpdateManyMutationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -336,6 +412,8 @@ export type UserUncheckedUpdateManyInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -346,8 +424,15 @@ export type UserCountOrderByAggregateInput = {
   email?: Prisma.SortOrder
   name?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type UserAvgOrderByAggregateInput = {
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -356,6 +441,8 @@ export type UserMaxOrderByAggregateInput = {
   email?: Prisma.SortOrder
   name?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -366,8 +453,15 @@ export type UserMinOrderByAggregateInput = {
   email?: Prisma.SortOrder
   name?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type UserSumOrderByAggregateInput = {
+  guestSmartChatMessagesUsed?: Prisma.SortOrder
+  guestAnalystUploadsUsed?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
@@ -386,6 +480,14 @@ export type StringFieldUpdateOperationsInput = {
 
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -442,6 +544,8 @@ export type UserCreateWithoutChatsInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentCreateNestedManyWithoutUserInput
@@ -454,6 +558,8 @@ export type UserUncheckedCreateWithoutChatsInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutUserInput
@@ -482,6 +588,8 @@ export type UserUpdateWithoutChatsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUpdateManyWithoutUserNestedInput
@@ -494,6 +602,8 @@ export type UserUncheckedUpdateWithoutChatsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutUserNestedInput
@@ -506,6 +616,8 @@ export type UserCreateWithoutDocumentsInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   chats?: Prisma.ChatCreateNestedManyWithoutUserInput
@@ -518,6 +630,8 @@ export type UserUncheckedCreateWithoutDocumentsInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   chats?: Prisma.ChatUncheckedCreateNestedManyWithoutUserInput
@@ -546,6 +660,8 @@ export type UserUpdateWithoutDocumentsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chats?: Prisma.ChatUpdateManyWithoutUserNestedInput
@@ -558,6 +674,8 @@ export type UserUncheckedUpdateWithoutDocumentsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chats?: Prisma.ChatUncheckedUpdateManyWithoutUserNestedInput
@@ -570,6 +688,8 @@ export type UserCreateWithoutAnalystDatasetsInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   chats?: Prisma.ChatCreateNestedManyWithoutUserInput
@@ -582,6 +702,8 @@ export type UserUncheckedCreateWithoutAnalystDatasetsInput = {
   email: string
   name?: string | null
   imageUrl?: string | null
+  guestSmartChatMessagesUsed?: number
+  guestAnalystUploadsUsed?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   chats?: Prisma.ChatUncheckedCreateNestedManyWithoutUserInput
@@ -610,6 +732,8 @@ export type UserUpdateWithoutAnalystDatasetsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chats?: Prisma.ChatUpdateManyWithoutUserNestedInput
@@ -622,6 +746,8 @@ export type UserUncheckedUpdateWithoutAnalystDatasetsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  guestSmartChatMessagesUsed?: Prisma.IntFieldUpdateOperationsInput | number
+  guestAnalystUploadsUsed?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   chats?: Prisma.ChatUncheckedUpdateManyWithoutUserNestedInput
@@ -683,6 +809,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   email?: boolean
   name?: boolean
   imageUrl?: boolean
+  guestSmartChatMessagesUsed?: boolean
+  guestAnalystUploadsUsed?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   chats?: boolean | Prisma.User$chatsArgs<ExtArgs>
@@ -697,6 +825,8 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   email?: boolean
   name?: boolean
   imageUrl?: boolean
+  guestSmartChatMessagesUsed?: boolean
+  guestAnalystUploadsUsed?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -707,6 +837,8 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   email?: boolean
   name?: boolean
   imageUrl?: boolean
+  guestSmartChatMessagesUsed?: boolean
+  guestAnalystUploadsUsed?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -717,11 +849,13 @@ export type UserSelectScalar = {
   email?: boolean
   name?: boolean
   imageUrl?: boolean
+  guestSmartChatMessagesUsed?: boolean
+  guestAnalystUploadsUsed?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clerkId" | "email" | "name" | "imageUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clerkId" | "email" | "name" | "imageUrl" | "guestSmartChatMessagesUsed" | "guestAnalystUploadsUsed" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   chats?: boolean | Prisma.User$chatsArgs<ExtArgs>
   documents?: boolean | Prisma.User$documentsArgs<ExtArgs>
@@ -744,6 +878,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     email: string
     name: string | null
     imageUrl: string | null
+    guestSmartChatMessagesUsed: number
+    guestAnalystUploadsUsed: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -1177,6 +1313,8 @@ export interface UserFieldRefs {
   readonly email: Prisma.FieldRef<"User", 'String'>
   readonly name: Prisma.FieldRef<"User", 'String'>
   readonly imageUrl: Prisma.FieldRef<"User", 'String'>
+  readonly guestSmartChatMessagesUsed: Prisma.FieldRef<"User", 'Int'>
+  readonly guestAnalystUploadsUsed: Prisma.FieldRef<"User", 'Int'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }

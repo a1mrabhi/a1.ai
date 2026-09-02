@@ -5,7 +5,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { useUser } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 
 import {
   Plus,
@@ -206,7 +206,12 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function AISmartChat() {
-  const { user } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { openSignIn, openSignUp } = useClerk();
+
+  const [guestMessageCount, setGuestMessageCount] = useState(0);
+  const [claimingGuest, setClaimingGuest] = useState(false);
+  const [showGuestLoginPrompt, setShowGuestLoginPrompt] = useState(false);
 
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -226,6 +231,13 @@ export default function AISmartChat() {
   const [search, setSearch] = useState("");
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const selectedChatIdRef = useRef<string | null>(null);
+  const previousSignedInRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    selectedChatIdRef.current = selectedChatId;
+  }, [selectedChatId]);
 
   // ------------------------------------------------------------
   // Collapse the sidebar by default on mobile so it opens as an
@@ -250,6 +262,19 @@ export default function AISmartChat() {
     });
   }, [messages, typing]);
 
+  // Return the cursor to the Smart Chat composer after the AI response
+  // finishes. The effect runs after `typing` becomes false, so the
+  // textarea is enabled before focus is requested.
+  useEffect(() => {
+    if (typing || claimingGuest || !isLoaded) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [typing, claimingGuest, isLoaded]);
+
   // ------------------------------------------------------------
   // Load user's chats
   // ------------------------------------------------------------
@@ -258,7 +283,9 @@ export default function AISmartChat() {
     try {
       setLoadingChats(true);
 
-      const response = await fetch("/api/chats");
+      const response = await fetch("/api/chats", {
+        cache: "no-store",
+      });
 
       const data = await response.json();
 
@@ -267,20 +294,13 @@ export default function AISmartChat() {
       }
 
       setChats(data.chats || []);
+      setGuestMessageCount(data.guest?.messageCount ?? 0);
     } catch (error) {
       console.error("Load chats error:", error);
     } finally {
       setLoadingChats(false);
     }
   }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadChats();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [loadChats]);
 
   // ------------------------------------------------------------
   // Load messages for selected chat
@@ -319,6 +339,56 @@ export default function AISmartChat() {
 
     return () => window.clearTimeout(timer);
   }, [selectedChatId, loadMessages]);
+
+  // A successful Clerk sign-in can happen from the third-message gate.
+  // Claim the anonymous session before enabling the authenticated composer.
+  // The claim endpoint is server-side, so the guest history is transferred
+  // even if the page was refreshed or the user opened another tab.
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (previousSignedInRef.current === isSignedIn) return;
+
+    previousSignedInRef.current = isSignedIn;
+    let cancelled = false;
+
+    const initializeSession = async () => {
+      setClaimingGuest(Boolean(isSignedIn));
+
+      try {
+        if (isSignedIn) {
+          const response = await fetch("/api/guest/claim", {
+            method: "POST",
+          });
+
+          if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            throw new Error(data?.error || "Could not restore your guest conversation.");
+          }
+        }
+
+        if (cancelled) return;
+
+        await loadChats();
+
+        const activeChatId = selectedChatIdRef.current;
+        if (isSignedIn && activeChatId && !cancelled) {
+          await loadMessages(activeChatId);
+        }
+      } catch (error) {
+        console.error("Guest session claim error:", error);
+      } finally {
+        if (!cancelled) {
+          setClaimingGuest(false);
+        }
+      }
+    };
+
+    void initializeSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, loadChats, loadMessages]);
 
   // ------------------------------------------------------------
   // Create new chat
@@ -372,10 +442,17 @@ export default function AISmartChat() {
   const handleSend = async (override?: string) => {
     const content = (override ?? input).trim();
 
-    if (!content || typing) return;
+    if (!content || typing || claimingGuest) return;
+
+    // The client gate is only for immediate UX. The server independently
+    // enforces the same limit, so refreshes/new tabs cannot reset usage.
+    if (!isSignedIn && guestMessageCount >= 2) {
+      setInput(content);
+      setShowGuestLoginPrompt(true);
+      return;
+    }
 
     let chatId = selectedChatId;
-    let isNewChat = false;
 
     try {
       setTyping(true);
@@ -390,13 +467,21 @@ export default function AISmartChat() {
 
         const createData = await createResponse.json();
 
+        if (
+          createResponse.status === 429 &&
+          createData.code === "GUEST_LIMIT_REACHED"
+        ) {
+          setGuestMessageCount(2);
+          setInput(content);
+          setShowGuestLoginPrompt(true);
+          return;
+        }
+
         if (!createResponse.ok || !createData.success) {
           throw new Error(createData.message || "Could not create chat");
         }
 
         chatId = createData.chat.id;
-        isNewChat = true;
-
         setChats((prev) => [createData.chat, ...prev]);
       }
 
@@ -428,6 +513,16 @@ export default function AISmartChat() {
 
       const data = await response.json();
 
+      if (response.status === 429 && data.code === "GUEST_LIMIT_REACHED") {
+        setGuestMessageCount(2);
+        setInput(content);
+        setMessages((prev) =>
+          prev.filter((message) => message.id !== optimisticMessage.id),
+        );
+        openSignIn();
+        return;
+      }
+
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Could not send message");
       }
@@ -441,6 +536,10 @@ export default function AISmartChat() {
         data.userMessage,
         data.assistantMessage,
       ]);
+
+      if (!isSignedIn && typeof data.usedMessages === "number") {
+        setGuestMessageCount(data.usedMessages);
+      }
 
       // NOW select the chat
       setSelectedChatId(chatId);
@@ -794,6 +893,128 @@ export default function AISmartChat() {
 }
       `}</style>
 
+      <style>{`
+        @keyframes guestPromptIn {
+          from { opacity: 0; transform: translateY(12px) scale(.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .guest-prompt-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background: rgba(2, 4, 10, .72);
+          backdrop-filter: blur(10px);
+        }
+        .guest-prompt-card {
+          width: min(440px, 100%);
+          position: relative;
+          overflow: hidden;
+          border: 1px solid rgba(167, 139, 250, .32);
+          border-radius: 24px;
+          background:
+            radial-gradient(360px circle at 15% 0%, rgba(167,139,250,.16), transparent 62%),
+            radial-gradient(300px circle at 100% 100%, rgba(94,234,212,.10), transparent 60%),
+            rgba(15, 17, 24, .96);
+          box-shadow: 0 30px 90px rgba(0,0,0,.55), 0 0 45px rgba(139,92,246,.14);
+          animation: guestPromptIn .24s cubic-bezier(.16,1,.3,1) both;
+        }
+        .guest-prompt-close {
+          position:absolute; top:14px; right:14px; width:34px; height:34px;
+          display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,.08);
+          background:rgba(255,255,255,.04); color:#a1a1aa; cursor:pointer;
+          transition:all .2s ease;
+        }
+        .guest-prompt-close:hover { color:#fff; background:rgba(255,255,255,.09); }
+        .guest-prompt-body { padding:34px 30px 28px; text-align:center; }
+        .guest-prompt-icon {
+          width:58px; height:58px; margin:0 auto 18px; display:grid; place-items:center;
+          border-radius:18px; color:#c4b5fd; border:1px solid rgba(167,139,250,.28);
+          background:linear-gradient(135deg, rgba(139,92,246,.18), rgba(45,212,191,.08));
+          box-shadow:0 12px 35px rgba(139,92,246,.15);
+        }
+        .guest-prompt-eyebrow { margin:0 0 7px; color:#a78bfa; font:600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:.14em; text-transform:uppercase; }
+        .guest-prompt-title { margin:0; color:#fafafa; font-size:22px; line-height:1.25; font-weight:700; }
+        .guest-prompt-text { margin:10px auto 0; max-width:350px; color:#a1a1aa; font-size:14px; line-height:1.65; }
+        .guest-prompt-actions { display:flex; gap:10px; margin-top:24px; }
+        .guest-prompt-primary, .guest-prompt-secondary {
+          flex:1; min-height:44px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s ease;
+        }
+        .guest-prompt-primary {
+          border:1px solid rgba(167,139,250,.45); color:#fff;
+          background:linear-gradient(135deg,#8b5cf6,#5eead4);
+          box-shadow:0 10px 28px rgba(139,92,246,.22);
+        }
+        .guest-prompt-primary:hover { transform:translateY(-1px); filter:brightness(1.06); }
+        .guest-prompt-secondary { border:1px solid rgba(255,255,255,.10); color:#d4d4d8; background:rgba(255,255,255,.045); }
+        .guest-prompt-secondary:hover { background:rgba(255,255,255,.08); color:#fff; }
+        .guest-prompt-note { margin:13px 0 0; color:#52525b; font-size:11px; }
+        @media(max-width:520px){ .guest-prompt-body{padding:30px 20px 22px}.guest-prompt-actions{flex-direction:column}.guest-prompt-primary,.guest-prompt-secondary{width:100%} }
+      `}</style>
+
+      {/* Guest trial login prompt */}
+      {showGuestLoginPrompt && !isSignedIn && (
+        <div
+          className="guest-prompt-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="guest-chat-prompt-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowGuestLoginPrompt(false);
+          }}
+        >
+          <div className="guest-prompt-card">
+            <button
+              type="button"
+              className="guest-prompt-close"
+              onClick={() => setShowGuestLoginPrompt(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className="guest-prompt-body">
+              <div className="guest-prompt-icon" aria-hidden="true">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <p className="guest-prompt-eyebrow">AI Smart Chat</p>
+              <h2 id="guest-chat-prompt-title" className="guest-prompt-title">
+                Ready for more AI?
+              </h2>
+              <p className="guest-prompt-text">
+                You’ve used your 2 free AI Smart Chat messages. Log in to continue
+                chatting and keep your conversation saved to your workspace.
+              </p>
+              <div className="guest-prompt-actions">
+                <button
+                  type="button"
+                  className="guest-prompt-primary"
+                  onClick={() => {
+                    setShowGuestLoginPrompt(false);
+                    openSignIn();
+                  }}
+                >
+                  Yes, log in
+                </button>
+                <button
+                  type="button"
+                  className="guest-prompt-secondary"
+                  onClick={() => {
+                    setShowGuestLoginPrompt(false);
+                    openSignUp();
+                  }}
+                >
+                  Create account
+                </button>
+              </div>
+              <p className="guest-prompt-note">Your previous conversation will be preserved.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="blob-1 absolute -top-24 -left-20 w-[28rem] h-[28rem] rounded-full bg-purple-500 opacity-20 blur-3xl" />
@@ -1099,18 +1320,19 @@ export default function AISmartChat() {
             <div className="input-glow-box relative shadow-lg shadow-black/30">
               <div className="relative flex items-end gap-2 px-3 py-2">
                 <textarea
+                  ref={inputRef}
                   rows={1}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Message AI Smart Chat..."
-                  disabled={typing}
+                  disabled={typing || claimingGuest}
                   className="flex-1 bg-transparent resize-none outline-none text-lg text-zinc-100 placeholder-zinc-500 py-2 max-h-32 disabled:opacity-50 relative z-10"
                 />
 
                 <button
                   onClick={() => handleSend()}
-                  disabled={!input.trim() || typing}
+                  disabled={!input.trim() || typing || claimingGuest}
                   className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-teal-400 disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-opacity shadow-lg relative z-10"
                 >
                   <ArrowUp

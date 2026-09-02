@@ -1,6 +1,9 @@
+"use client";
+
 import "./analyst.css";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useClerk, useUser } from "@clerk/nextjs";
 
 type NumericStat = {
   column: string;
@@ -476,6 +479,8 @@ export default function AnalystResults({
   durationSeconds,
 }: AnalystResultsProps) {
   const rootRef = useRef<HTMLElement>(null);
+  const { isLoaded, isSignedIn } = useUser();
+  const { openSignIn, openSignUp } = useClerk();
   useReveal(rootRef);
 
   const totalMissing = analysis.missingValues.reduce(
@@ -502,6 +507,10 @@ export default function AnalystResults({
   });
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
+  const [guestQuestionCount, setGuestQuestionCount] = useState(initialQuestion ? 1 : 0);
+  const [showGuestLoginPrompt, setShowGuestLoginPrompt] = useState(false);
+  const GUEST_ANALYST_LIMIT = 2;
+  const guestClaimAttemptedRef = useRef(false);
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(
     null,
   );
@@ -558,9 +567,28 @@ export default function AnalystResults({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || guestClaimAttemptedRef.current) return;
+    guestClaimAttemptedRef.current = true;
+
+    void fetch("/api/guest/claim", { method: "POST" })
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.error || "Could not restore the guest session.");
+        }
+      })
+      .catch((error) => console.error("Analyst guest claim error:", error));
+  }, [isLoaded, isSignedIn]);
+
   const sendChatMessage = async (question?: string) => {
     const message = (question ?? chatInput).trim();
     if (!message || chatLoading) return;
+
+    if (!isSignedIn && guestQuestionCount >= GUEST_ANALYST_LIMIT) {
+      setShowGuestLoginPrompt(true);
+      return;
+    }
 
     // Any new question should bring the analyst back into view.
     setIsChatOpen(true);
@@ -583,6 +611,13 @@ export default function AnalystResults({
 
       const result = await response.json();
 
+      if (response.status === 429 && result.code === "GUEST_LIMIT_REACHED") {
+        setGuestQuestionCount(GUEST_ANALYST_LIMIT);
+        setChatMessages((prev) => prev.slice(0, -1));
+        setShowGuestLoginPrompt(true);
+        return;
+      }
+
       if (!response.ok || !result.success) {
         throw new Error(result.error || "Unable to get an answer.");
       }
@@ -597,6 +632,10 @@ export default function AnalystResults({
         ...prev,
         { role: "assistant", content: String(answer) },
       ]);
+
+      if (!isSignedIn) {
+        setGuestQuestionCount((count) => Math.min(GUEST_ANALYST_LIMIT, count + 1));
+      }
     } catch (error) {
       setChatError(
         error instanceof Error
@@ -629,8 +668,49 @@ export default function AnalystResults({
   }, [isChatOpen]);
 
   return (
-    <div
-      className={`analyst-shell ${isChatOpen ? "chat-open" : "chat-minimized"}`}
+    <>
+      <style>{`
+        @keyframes guestAnalystPromptIn {
+          from { opacity: 0; transform: translateY(12px) scale(.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .guest-analyst-overlay { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(2,4,10,.72); backdrop-filter:blur(10px); }
+        .guest-analyst-card { width:min(440px,100%); position:relative; overflow:hidden; border:1px solid rgba(255,200,87,.28); border-radius:24px; background:radial-gradient(360px circle at 15% 0%,rgba(255,200,87,.13),transparent 62%),radial-gradient(300px circle at 100% 100%,rgba(140,124,240,.12),transparent 60%),rgba(15,17,24,.97); box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 45px rgba(255,200,87,.10); animation:guestAnalystPromptIn .24s cubic-bezier(.16,1,.3,1) both; }
+        .guest-analyst-close { position:absolute; top:14px; right:14px; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04); color:#a1a1aa; cursor:pointer; }
+        .guest-analyst-close:hover { color:#fff; background:rgba(255,255,255,.09); }
+        .guest-analyst-body { padding:34px 30px 28px; text-align:center; }
+        .guest-analyst-icon { width:58px; height:58px; margin:0 auto 18px; display:grid; place-items:center; border-radius:18px; color:#ffd77a; border:1px solid rgba(255,200,87,.28); background:linear-gradient(135deg,rgba(255,200,87,.16),rgba(140,124,240,.10)); }
+        .guest-analyst-eyebrow { margin:0 0 7px; color:#ffc857; font:600 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; text-transform:uppercase; }
+        .guest-analyst-title { margin:0; color:#fafafa; font-size:22px; line-height:1.25; font-weight:700; }
+        .guest-analyst-text { margin:10px auto 0; max-width:350px; color:#a1a1aa; font-size:14px; line-height:1.65; }
+        .guest-analyst-actions { display:flex; gap:10px; margin-top:24px; }
+        .guest-analyst-primary,.guest-analyst-secondary { flex:1; min-height:44px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; }
+        .guest-analyst-primary { border:1px solid rgba(255,200,87,.42); color:#111827; background:linear-gradient(135deg,#ffc857,#8c7cf0); }
+        .guest-analyst-secondary { border:1px solid rgba(255,255,255,.10); color:#d4d4d8; background:rgba(255,255,255,.045); }
+        .guest-analyst-secondary:hover { background:rgba(255,255,255,.08); color:#fff; }
+        @media(max-width:520px){ .guest-analyst-body{padding:30px 20px 22px}.guest-analyst-actions{flex-direction:column}.guest-analyst-primary,.guest-analyst-secondary{width:100%;} }
+      `}</style>
+      {showGuestLoginPrompt && !isSignedIn && (
+        <div className="guest-analyst-overlay" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowGuestLoginPrompt(false); }}>
+          <div className="guest-analyst-card">
+            <button type="button" className="guest-analyst-close" onClick={() => setShowGuestLoginPrompt(false)} aria-label="Close">×</button>
+            <div className="guest-analyst-body">
+              <div className="guest-analyst-icon" aria-hidden="true">✦</div>
+              <p className="guest-analyst-eyebrow">AI Data Analyst</p>
+              <h2 className="guest-analyst-title">Ready for more AI?</h2>
+              <p className="guest-analyst-text">You’ve used your 2 free AI Data Analyst questions. Log in to continue analyzing your data and keep your conversation saved.</p>
+              <div className="guest-analyst-actions">
+                <button type="button" className="guest-analyst-primary" onClick={() => { setShowGuestLoginPrompt(false); openSignIn(); }}>Yes, log in</button>
+                <button type="button" className="guest-analyst-secondary" onClick={() => { setShowGuestLoginPrompt(false); openSignUp(); }}>Create account</button>
+              </div>
+              <button type="button" className="guest-analyst-secondary" style={{ width: "100%", marginTop: 10 }} onClick={() => setShowGuestLoginPrompt(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`analyst-shell ${isChatOpen ? "chat-open" : "chat-minimized"}`}
     >
       <section className="analysis-results" ref={rootRef}>
         <div className="ar-glow" aria-hidden="true" />
@@ -1099,5 +1179,6 @@ export default function AnalystResults({
         </button>
       )}
     </div>
+    </>
   );
 }

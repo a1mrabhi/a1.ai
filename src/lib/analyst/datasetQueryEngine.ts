@@ -45,7 +45,8 @@ export type QueryPlan = {
     | "trend"
     | "formula_check"
     | "outliers"
-    | "patterns";
+    | "patterns"
+  | "recommendation";
   targetColumn?: string;
   groupBy?: string;
   dateColumn?: string;
@@ -114,6 +115,7 @@ const ALL_OPERATIONS: QueryPlan["operation"][] = [
   "formula_check",
   "outliers",
   "patterns",
+  "recommendation",
 ];
 
 function isMissing(value: unknown): boolean {
@@ -522,6 +524,7 @@ const OPERATIONS_REQUIRING_TARGET: QueryPlan["operation"][] = [
   "median",
   "top",
   "bottom",
+  "recommendation",
 ];
 
 const GROUPED_OPERATIONS: QueryPlan["operation"][] = [
@@ -835,10 +838,16 @@ function isQueryPlan(value: unknown): value is QueryPlan {
  * Convert a natural-language question into a safe query plan.
  * Gemini receives only the schema and compact statistics — never raw rows.
  */
+export type PlannerHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export async function createQueryPlan(
   question: string,
   columns: DatasetColumn[],
   _analysis?: unknown,
+  history: PlannerHistoryMessage[] = [],
 ): Promise<QueryPlan> {
   // Query planning only needs the dataset schema. Keeping the planner input
   // schema-only guarantees that even a very large analysis object cannot
@@ -855,12 +864,23 @@ export async function createQueryPlan(
     2,
   );
 
+  const conversationContext = history.length
+    ? `\nRECENT CONVERSATION CONTEXT (use this to resolve follow-up references such as "it", "that", "and phone?", or "what about the other one"):\n${history
+        .slice(-10)
+        .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+        .join("\n")}\n`
+    : "";
+
   const prompt = `
 You are the query planner for A1.ai.
 
 Convert the user's natural-language question into ONE deterministic JSON
 query plan. Do not answer the question yourself. The server will execute the
 plan against the complete dataset.
+${conversationContext}
+Important: the CURRENT QUESTION is authoritative. Use the conversation context
+only to resolve omitted subjects, metrics, groups, or references. Never invent
+a value that is not supported by the schema or the server-side calculations.
 
 The raw dataset rows are NOT available to you and must never be requested.
 
@@ -868,7 +888,7 @@ Allowed operations:
 count, sum, average, min, max, median, distinct,
 group_count, group_sum, group_average, top, bottom, percentage,
 missing, describe, correlation, rows, trend, formula_check,
-outliers, patterns.
+outliers, patterns, recommendation.
 
 Allowed filter operators:
 =, !=, >, >=, <, <=, contains, startsWith, endsWith, before, after, on, between.
@@ -1006,6 +1026,7 @@ Rules:
   no target column). The server synthesizes correlations, the most skewed
   category, a trend, and missing-data hotspots into one narrative; you only
   need to return { "operation": "patterns" }.
+- Questions asking how to "improve", "increase", "grow", "boost", or "optimize" a numeric business outcome (for example revenue, sales, profit, units sold) => recommendation. Set targetColumn to the named outcome. The server will compare the outcome across categorical dimensions, check unit economics when a units/quantity column exists, and inspect the time trend. Do not use describe for these strategic questions.
 - "verify/check/validate that X = Y * Z" (a specific named formula) =>
   formula_check, not outliers.
 - "above 90" => > 90.
@@ -1888,6 +1909,165 @@ export function executeQueryPlan(
           columns: columnResults,
         },
         answer: lines.join("\n").trim(),
+      };
+    }
+
+    case "recommendation": {
+      if (!target) {
+        throw new Error("Recommendation requires a numeric target column.");
+      }
+
+      const targetValues = numericValues(filteredRows, target);
+      if (!targetValues.length) {
+        return {
+          plan,
+          matchedRows: filteredRows.length,
+          result: { recommendation: null },
+          answer: `I could not calculate a recommendation because **${target}** has no usable numeric values.`,
+        };
+      }
+
+      const total = round(targetValues.reduce((sum, value) => sum + value, 0));
+      const average = round(total / targetValues.length);
+
+      const categoricalProfiles = profileColumns(filteredRows, columns).filter(
+        (profile) => profile.kind === "categorical",
+      );
+
+      const dimensionResults = categoricalProfiles
+        .filter((profile) => !/id$/i.test(profile.column.name))
+        .map((profile) => {
+          const groups = new Map<string, { label: unknown; values: number[] }>();
+          for (const row of filteredRows) {
+            const label = row[profile.column.name];
+            const key = String(label ?? "(missing)");
+            const value = toNumber(row[target!]);
+            if (value === null) continue;
+            const existing = groups.get(key);
+            if (existing) existing.values.push(value);
+            else groups.set(key, { label: label ?? "(missing)", values: [value] });
+          }
+
+          const ranked = Array.from(groups.values())
+            .map((group) => ({
+              group: group.label,
+              total: round(group.values.reduce((sum, value) => sum + value, 0)),
+              records: group.values.length,
+            }))
+            .sort((a, b) => b.total - a.total);
+
+          return {
+            column: profile.column.name,
+            top: ranked[0] ?? null,
+            bottom: ranked.length > 1 ? ranked[ranked.length - 1] : null,
+          };
+        })
+        .filter((item) => item.top !== null)
+        .slice(0, 3);
+
+      const unitColumn = columns.find((column) =>
+        /^(units?|quantity|qty|volume|unitssold)$/i.test(column.name.replace(/[ _-]/g, "")),
+      )?.name;
+
+      let revenuePerUnit: { column: string; value: number } | null = null;
+      if (unitColumn) {
+        const pairs = filteredRows
+          .map((row) => ({ target: toNumber(row[target!]), units: toNumber(row[unitColumn]) }))
+          .filter((pair): pair is { target: number; units: number } =>
+            pair.target !== null && pair.units !== null && pair.units > 0,
+          );
+        if (pairs.length) {
+          const targetSum = pairs.reduce((sum, pair) => sum + pair.target, 0);
+          const unitSum = pairs.reduce((sum, pair) => sum + pair.units, 0);
+          if (unitSum > 0) revenuePerUnit = { column: unitColumn, value: round(targetSum / unitSum) };
+        }
+      }
+
+      const dateColumn = profileColumns(filteredRows, columns).find(
+        (profile) => profile.kind === "date",
+      )?.column.name;
+      let trend: { first: number; last: number; changePercentage: number | null } | null = null;
+      if (dateColumn) {
+        const points = new Map<string, number>();
+        for (const row of filteredRows) {
+          const date = toDate(row[dateColumn]);
+          const value = toNumber(row[target!]);
+          if (!date || value === null) continue;
+          const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+          points.set(key, (points.get(key) ?? 0) + value);
+        }
+        const ordered = Array.from(points.entries()).sort(([a], [b]) => a.localeCompare(b));
+        if (ordered.length >= 2) {
+          const first = ordered[0][1];
+          const last = ordered[ordered.length - 1][1];
+          trend = {
+            first: round(first),
+            last: round(last),
+            changePercentage: first === 0 ? null : round(((last - first) / Math.abs(first)) * 100),
+          };
+        }
+      }
+
+      const lines: string[] = [];
+      lines.push(`### How to improve ${target}`);
+      lines.push(
+        `Your current total **${target}** is **${formatNumber(total)}** across **${formatNumber(targetValues.length)}** records (average **${formatNumber(average)}**).`,
+      );
+
+      if (dimensionResults.length) {
+        lines.push("");
+        lines.push("**Where to focus**");
+        for (const item of dimensionResults) {
+          lines.push(
+            `- **${item.column}**: **${formatValue(item.top!.group)}** generates the highest total **${target}** at **${formatNumber(item.top!.total)}**.` +
+              (item.bottom ? ` The lowest is **${formatValue(item.bottom.group)}** at **${formatNumber(item.bottom.total)}**.` : ""),
+          );
+        }
+      }
+
+      if (revenuePerUnit) {
+        lines.push("");
+        lines.push(
+          `**Unit economics:** ${target} is about **${formatNumber(revenuePerUnit.value)} per ${revenuePerUnit.column}** across the dataset.`,
+        );
+      }
+
+      if (trend) {
+        lines.push("");
+        const direction = trend.last > trend.first ? "increased" : trend.last < trend.first ? "decreased" : "was stable";
+        lines.push(
+          `**Trend:** total ${target} ${direction} from **${formatNumber(trend.first)}** to **${formatNumber(trend.last)}** over the available periods` +
+            (trend.changePercentage === null ? "." : ` (**${formatNumber(Math.abs(trend.changePercentage))}%** change).`),
+        );
+      }
+
+      lines.push("");
+      if (dimensionResults[0]?.top) {
+        lines.push(
+          `**Best action:** prioritize the strongest-performing **${dimensionResults[0].column}** segment (**${formatValue(dimensionResults[0].top.group)}**) and replicate what is working there. Pair that with targeted volume growth rather than trying to increase every segment equally.`,
+        );
+      } else {
+        lines.push(
+          `**Best action:** focus on the segments that generate the most **${target}**, then test whether additional volume can be added without reducing the value generated per unit.`,
+        );
+      }
+      lines.push(
+        "This is an evidence-based prioritization from the uploaded data, not a guarantee that the same result will hold outside this dataset.",
+      );
+
+      return {
+        plan,
+        matchedRows: filteredRows.length,
+        result: {
+          operation: "recommendation",
+          targetColumn: target,
+          total,
+          average,
+          dimensions: dimensionResults,
+          revenuePerUnit,
+          trend,
+        },
+        answer: lines.join("\n"),
       };
     }
 

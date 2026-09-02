@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrCreateUser } from "@/lib/user";
+import { getOrCreateRequestUser, isGuestUser } from "@/lib/user";
 import { prisma } from "@/lib/prisma";
 import { analyzeDataset } from "@/lib/analyst/datasetAnalyzer";
 import type { DatasetColumn } from "@/lib/analyst/analystTypes";
@@ -506,6 +506,51 @@ function executeDeterministicQuery(
   };
 }
 
+async function persistAnalystExchange(
+  datasetId: string,
+  question: string,
+  answer: string,
+) {
+  let conversation = await prisma.analystConversation.findFirst({
+    where: { datasetId },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.analystConversation.create({
+      data: {
+        datasetId,
+        title: question.length > 80 ? `${question.substring(0, 80)}...` : question,
+      },
+      select: { id: true },
+    });
+  }
+
+  await prisma.$transaction([
+    prisma.analystMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: "USER",
+        content: question,
+      },
+    }),
+    prisma.analystMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: "ASSISTANT",
+        content: answer,
+      },
+    }),
+    prisma.analystConversation.update({
+      where: { id: conversation.id },
+      data: { updatedAt: new Date() },
+    }),
+  ]);
+
+  return conversation.id;
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as AnalyzeChatRequest;
@@ -533,7 +578,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await getOrCreateUser();
+    const user = await getOrCreateRequestUser();
+
+    // Guests get exactly two Analyst questions across their anonymous
+    // session. This is server-enforced and therefore cannot be reset by
+    // refreshing the page or opening another tab.
+    if (isGuestUser(user)) {
+      const guestQuestions = await prisma.analystMessage.count({
+        where: {
+          role: "USER",
+          conversation: {
+            dataset: { userId: user.id },
+          },
+        },
+      });
+
+      if (guestQuestions >= 2) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: "GUEST_LIMIT_REACHED",
+            error: "You have used your 2 free AI Data Analyst questions. Please log in to continue.",
+          },
+          { status: 429 },
+        );
+      }
+    }
 
     /*
      * Fetch only the dataset belonging to the current user.
@@ -566,6 +636,31 @@ export async function POST(request: Request) {
     const columns = parseStoredColumns(dataset.columns);
     const rows = parseStoredRows(dataset.rows);
 
+    // Load recent Analyst conversation context so follow-up questions can be
+    // resolved from the actual persisted conversation, not just the current
+    // one-line question. The latest exchange is already stored before the next
+    // request arrives.
+    const existingConversation = await prisma.analystConversation.findFirst({
+      where: { datasetId: dataset.id },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          select: { role: true, content: true },
+        },
+      },
+    });
+
+    const conversationHistory = [...(existingConversation?.messages ?? [])]
+      .reverse()
+      .filter((message) => message.role === "USER" || message.role === "ASSISTANT")
+      .map((message) => ({
+        role: message.role === "USER" ? ("user" as const) : ("assistant" as const),
+        content: message.content,
+      })) ?? [];
+
     if (!rows.length || !columns.length) {
       return NextResponse.json(
         {
@@ -593,11 +688,19 @@ export async function POST(request: Request) {
     );
 
     if (deterministicResult.handled) {
+      const answer = deterministicResult.answer ?? "";
+      const conversationId = await persistAnalystExchange(
+        dataset.id,
+        question,
+        answer,
+      );
+
       return NextResponse.json({
         success: true,
-        answer: deterministicResult.answer,
+        answer,
         result: deterministicResult.result,
         source: "server-analysis",
+        conversationId,
       });
     }
 
@@ -613,7 +716,12 @@ export async function POST(request: Request) {
 
     const analysis = analyzeDataset(rows, columns);
 
-    const queryPlan = await createQueryPlan(question, columns, analysis);
+    const queryPlan = await createQueryPlan(
+      question,
+      columns,
+      analysis,
+      conversationHistory,
+    );
 
     /*
      * ------------------------------------------------------------
@@ -625,6 +733,12 @@ export async function POST(request: Request) {
 
     const execution = executeQueryPlan(queryPlan, rows, columns);
 
+    const conversationId = await persistAnalystExchange(
+      dataset.id,
+      question,
+      execution.answer,
+    );
+
     return NextResponse.json({
       success: true,
       answer: execution.answer,
@@ -632,6 +746,7 @@ export async function POST(request: Request) {
       matchedRows: execution.matchedRows,
       queryPlan: execution.plan,
       source: "server-query-engine",
+      conversationId,
     });
   } catch (error) {
     console.error("Dataset chat error:", error);

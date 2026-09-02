@@ -83,6 +83,8 @@ export const UserScalarFieldEnum = {
   email: 'email',
   name: 'name',
   imageUrl: 'imageUrl',
+  guestSmartChatMessagesUsed: 'guestSmartChatMessagesUsed',
+  guestAnalystUploadsUsed: 'guestAnalystUploadsUsed',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

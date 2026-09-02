@@ -4,15 +4,22 @@ import { profileDataset } from "@/lib/analyst/datasetProfiler";
 import { normalizeColumnType } from "@/lib/analyst/analystTypes";
 import { analyzeDataset } from "@/lib/analyst/datasetAnalyzer";
 import { NextResponse } from "next/server";
-import { getOrCreateUser } from "@/lib/user";
+import { getOrCreateRequestUser, isGuestUser } from "@/lib/user";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+class GuestAnalystLimitError extends Error {
+  constructor() {
+    super("Guest AI Data Analyst upload limit reached");
+    this.name = "GuestAnalystLimitError";
+  }
+}
 
 const ALLOWED_EXTENSIONS = [".csv", ".xls", ".xlsx", ".json"];
 
 export async function POST(request: Request) {
   try {
-    const user = await getOrCreateUser();
+    const user = await getOrCreateRequestUser();
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -174,20 +181,79 @@ export async function POST(request: Request) {
     // Save dataset to PostgreSQL
     // ------------------------------------------------------------
 
-    const savedDataset = await prisma.analystDataset.create({
-      data: {
-        userId: user.id,
-        fileName: parsedDataset.fileName,
-        fileSize: file.size,
-        mimeType: file.type || null,
+    let savedDataset: Awaited<ReturnType<typeof prisma.analystDataset.create>>;
 
-        rowCount: parsedDataset.rowCount,
-        columnCount: parsedDataset.columnCount,
+    if (isGuestUser(user)) {
+      try {
+        savedDataset = await prisma.$transaction(async (tx) => {
+          // Serialize guest uploads so two tabs cannot both consume the
+          // single free dataset slot concurrently.
+          await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id} FOR UPDATE`;
 
-        columns: normalizedColumns,
-        rows: JSON.parse(JSON.stringify(parsedDataset.rows)),
-      },
-    });
+          const guestUser = await tx.user.findUnique({
+            where: { id: user.id },
+            select: { guestAnalystUploadsUsed: true },
+          });
+
+          if (!guestUser || guestUser.guestAnalystUploadsUsed >= 1) {
+            throw new GuestAnalystLimitError();
+          }
+
+          const createdDataset = await tx.analystDataset.create({
+            data: {
+              userId: user.id,
+              fileName: parsedDataset.fileName,
+              fileSize: file.size,
+              mimeType: file.type || null,
+
+              rowCount: parsedDataset.rowCount,
+              columnCount: parsedDataset.columnCount,
+
+              columns: normalizedColumns,
+              rows: JSON.parse(JSON.stringify(parsedDataset.rows)),
+            },
+          });
+
+          await tx.user.update({
+            where: { id: user.id },
+            data: {
+              guestAnalystUploadsUsed: { increment: 1 },
+            },
+          });
+
+          return createdDataset;
+        });
+      } catch (error) {
+        if (error instanceof GuestAnalystLimitError) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "GUEST_LIMIT_REACHED",
+              error:
+                "You have used your 1 free AI Data Analyst file analysis. Please log in or sign up to analyze another file.",
+            },
+            { status: 429 },
+          );
+        }
+
+        throw error;
+      }
+    } else {
+      savedDataset = await prisma.analystDataset.create({
+        data: {
+          userId: user.id,
+          fileName: parsedDataset.fileName,
+          fileSize: file.size,
+          mimeType: file.type || null,
+
+          rowCount: parsedDataset.rowCount,
+          columnCount: parsedDataset.columnCount,
+
+          columns: normalizedColumns,
+          rows: JSON.parse(JSON.stringify(parsedDataset.rows)),
+        },
+      });
+    }
 
     // ------------------------------------------------------------
     // Return dataset + database ID
