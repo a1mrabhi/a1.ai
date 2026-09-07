@@ -256,7 +256,9 @@ export default function AnalystPage() {
       .then(async (response) => {
         if (!response.ok) {
           const data = await response.json().catch(() => null);
-          throw new Error(data?.error || "Could not restore the guest session.");
+          throw new Error(
+            data?.error || "Could not restore the guest session.",
+          );
         }
       })
       .catch((claimError) => {
@@ -479,14 +481,17 @@ export default function AnalystPage() {
           aria-modal="true"
           aria-labelledby="guest-analyst-prompt-title"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) window.location.href = "/dashboard";
+            if (event.target === event.currentTarget)
+              window.location.href = "/dashboard";
           }}
         >
           <div className="guest-prompt-card">
             <button
               type="button"
               className="guest-prompt-close"
-              onClick={() => { window.location.href = "/dashboard"; }}
+              onClick={() => {
+                window.location.href = "/dashboard";
+              }}
               aria-label="Close"
             >
               ×
@@ -496,12 +501,15 @@ export default function AnalystPage() {
                 <SparkleIcon />
               </div>
               <p className="guest-prompt-eyebrow">AI Data Analyst</p>
-              <h2 id="guest-analyst-prompt-title" className="guest-prompt-title">
+              <h2
+                id="guest-analyst-prompt-title"
+                className="guest-prompt-title"
+              >
                 Ready for more AI?
               </h2>
               <p className="guest-prompt-text">
-                You’ve used your free AI Data Analyst analysis. Log in to continue
-                analyzing your data and keep your workspace history.
+                You’ve used your free AI Data Analyst analysis. Log in to
+                continue analyzing your data and keep your workspace history.
               </p>
               <div className="guest-prompt-actions">
                 <button
@@ -525,12 +533,16 @@ export default function AnalystPage() {
                   Create account
                 </button>
               </div>
-              <p className="guest-prompt-note">Your guest dataset will be preserved.</p>
+              <p className="guest-prompt-note">
+                Your guest dataset will be preserved.
+              </p>
               <button
                 type="button"
                 className="guest-prompt-secondary"
                 style={{ width: "100%", marginTop: 10 }}
-                onClick={() => { window.location.href = "/dashboard"; }}
+                onClick={() => {
+                  window.location.href = "/dashboard";
+                }}
               >
                 Cancel
               </button>
@@ -1275,21 +1287,121 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 /* ---------- Responsive ---------- */
 @media (max-width:900px){
   .page-badge{ display:none; }
+  .nav-actions{ margin-left:auto; }
 }
 @media (max-width:700px){
-  .analyst-container{ padding-bottom:80px; }
-  .upload-card{ min-height:260px; padding:24px; }
+  .container{ padding:0 20px; }
+
   .stats-grid{ grid-template-columns:repeat(2,1fr); }
   .analysis-cta{ flex-direction:column; align-items:flex-start; }
-  
+
+  .nav{ height:58px; gap:10px; }
+  .logo{ font-size:17px; }
+  .mark{ width:21px; height:21px; }
+  .dash-link{ padding:9px; border-radius:10px; }
   .dash-link span{ display:none; }
+
   .upload-compact{ flex-direction:column; align-items:flex-start; }
   .uc-change{ width:100%; justify-content:center; }
   .uc-name{ max-width:220px; }
+
+  body{ overflow-x:hidden; }
+
+  /* ---- 50/50 split: text on top half, upload box on bottom half ---- */
+  .analyst-page:not(.analyst-page-ready){
+    display:flex;
+    flex-direction:column;
+    height:calc(100vh - 58px);
+    height:calc(100dvh - 58px); /* modern browsers: accounts for mobile URL bar */
+    overflow:hidden;
+  }
+
+    .analyst-page:not(.analyst-page-ready) .hero{
+    flex:0 0 35%;
+    height:35%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+  }
+
+  .analyst-page:not(.analyst-page-ready) .hero-inner{
+    width:100%;
+  }
+
+      .analyst-page:not(.analyst-page-ready) .analyst-container{
+    flex:0 0 65%;
+    height:65%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0;
+    padding:0 20px;
+    position:relative;
+    overflow:hidden;
+    background:
+      radial-gradient(420px circle at 15% 10%, rgba(140,124,240,.14), transparent 60%),
+      radial-gradient(380px circle at 90% 90%, rgba(84,232,214,.10), transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,.02), transparent 60%),
+      var(--bg-alt);
+  }
+
+  /* soft seam between the hero half and the upload half instead of a hard cut */
+  .analyst-page:not(.analyst-page-ready) .analyst-container::before{
+    content:"";
+    position:absolute;
+    top:0; left:0; right:0;
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(148,163,196,.18) 50%, transparent);
+    pointer-events:none;
+  }
+
+  /* ---- hero: single line per phrase, scales to fit its half ---- */
+  .eyebrow{ margin-bottom:12px; }
+  .hero h1{
+    font-size:clamp(17px,5.8vw,26px);
+    line-height:1.26;
+    letter-spacing:-.015em;
+    margin-bottom:10px;
+    white-space:nowrap;
+  }
+  .grad-text{ margin-top:4px; white-space:nowrap; }
+  .hero-sub{
+    font-size:13.5px;
+    line-height:1.5;
+    padding:0 4px;
+  }
+
+  /* ---- upload card: fills its half, on-brand tinted surface ---- */
+    .upload-card{
+    width:100%;
+    min-height:0;
+    height:100%;
+    max-height:420px;
+    padding:24px 22px;
+    border-radius:20px;
+    background:
+      linear-gradient(160deg, rgba(140,124,240,.22), rgba(84,232,214,.10) 55%, rgba(255,200,87,.08) 100%),
+      rgba(21,25,42,.92);
+    border-color:rgba(255,255,255,.16);
+    box-shadow:
+      0 22px 54px -26px rgba(140,124,240,.45),
+      inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .upload-icon{ margin-bottom:16px; }
+  .upload-card h2{ font-size:19px; }
+  .upload-card p{ font-size:13px; margin-bottom:12px; }
+  .upload-formats{ font-size:10.5px; }
+  .upload-dots{ opacity:.9; }
+  .upload-border-glow{ opacity:.8; }
+
+  .error-card{ margin-top:14px; }
 }
 @media (max-width:420px){
   .stats-grid{ grid-template-columns:1fr; }
-  .upload-card h2{ font-size:20px; }
+  .hero h1{ font-size:clamp(16px,6.6vw,22px); }
+  .upload-card{ padding:20px 18px; }
+  .upload-card h2{ font-size:18px; }
 }
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; }

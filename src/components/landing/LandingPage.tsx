@@ -11,19 +11,6 @@ import {
 import Link from "next/link";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 
-/**
- * A1.ai — futuristic landing page
- * -----------------------------------------------------------------------
- * Drop-in usage (Next.js App Router):
- *   1. Save this file as  app/page.jsx  (or import <A1.aiLanding /> into it)
- *   2. No extra npm installs required — plain React + CSS, no Tailwind,
- *      no framer-motion. Works in App Router or Pages Router.
- *   3. Fonts load via @import in the injected <style> tag below. If you'd
- *      rather use next/font, swap the @import for next/font/google loaders
- *      for Fraunces, Inter, and IBM Plex Mono and drop the @import line.
- * -----------------------------------------------------------------------
- */
-
 const FEATURES = [
   {
     id: "chat",
@@ -52,7 +39,7 @@ const STEPS = [
   {
     n: "01",
     title: "Bring your information",
-    desc: "Upload a spreadsheet, drop in a document, or just start typing — however your information already exists.",
+    desc: "Upload a spreadsheet, drop in a document, or just start typing - however your information already exists.",
   },
   {
     n: "02",
@@ -62,19 +49,15 @@ const STEPS = [
   {
     n: "03",
     title: "Discover what matters",
-    desc: "Patterns, trends, and anomalies surface automatically — with the evidence behind every insight.",
+    desc: "Patterns, trends, and anomalies surface automatically - with the evidence behind every insight.",
   },
 ];
 
 const INSIGHTS = [
-  "Revenue peaks every Friday — consider restocking before the weekend rush.",
+  "Revenue peaks every Friday - consider restocking before the weekend rush.",
   "Region West is underperforming North by 22% this quarter.",
   "Anomaly detected: Feb 14 revenue spiked 340% above baseline.",
 ];
-
-/* ------------------------------------------------------------------ */
-/* Small hooks                                                         */
-/* ------------------------------------------------------------------ */
 
 function useReveal() {
   useEffect(() => {
@@ -131,10 +114,6 @@ function useTypingCycle(strings: string[], speed = 22, hold = 2200) {
   }, []);
   return text;
 }
-
-/* ------------------------------------------------------------------ */
-/* Feature card with cursor-tracked spotlight                          */
-/* ------------------------------------------------------------------ */
 
 interface Feature {
   id: string;
@@ -228,15 +207,11 @@ function MagneticButton({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Main component                                                      */
-/* ------------------------------------------------------------------ */
-
 export default function A1aiLanding() {
   useReveal();
   const typed = useTypingCycle(INSIGHTS);
-  const [menuOpen, setMenuOpen] = useState(false);
   const { isSignedIn } = useUser();
+  const [activeSection, setActiveSection] = useState("home");
 
   return (
     <>
@@ -252,55 +227,91 @@ export default function A1aiLanding() {
             </span>
             A1.ai
           </Link>
-          <nav className={`nav-links ${menuOpen ? "open" : ""}`}>
-            <a href="#" onClick={() => setMenuOpen(false)}>
+
+          <nav className="nav-links" aria-label="Primary">
+            <a
+              href="#"
+              className={activeSection === "home" ? "active" : ""}
+              onClick={() => setActiveSection("home")}
+            >
               Home
             </a>
-            <a href="#features" onClick={() => setMenuOpen(false)}>
+            <a
+              href="#features"
+              className={activeSection === "features" ? "active" : ""}
+              onClick={() => setActiveSection("features")}
+            >
               Features
             </a>
-            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>
+            <a
+              href="#how-it-works"
+              className={activeSection === "how-it-works" ? "active" : ""}
+              onClick={() => setActiveSection("how-it-works")}
+            >
               How it works
             </a>
           </nav>
+
           <div className="nav-actions">
             {!isSignedIn ? (
               <>
                 <SignInButton mode="modal">
-                  <button className="btn btn-ghost login-btn">Log in</button>
+                  <button className="btn btn-auth login-btn">Log in</button>
                 </SignInButton>
 
                 <SignUpButton mode="modal">
-                  <MagneticButton className="btn btn-primary">
-                    Start free
-                    <ArrowIcon />
+                  <MagneticButton className="btn btn-auth signup-btn">
+                    Sign Up
                   </MagneticButton>
                 </SignUpButton>
               </>
             ) : (
-              <>
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-10 h-10",
-                    },
-                  }}
-                />
-              </>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "w-9 h-9",
+                  },
+                }}
+              />
             )}
           </div>
-          <button
-            className={`menu-toggle ${menuOpen ? "open" : ""}`}
-            aria-label="Toggle menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
         </div>
       </header>
+
+      <nav className="bottom-nav" aria-label="Sections">
+        <div className="bottom-nav-inner">
+          <a
+            href="#"
+            className={`bottom-nav-item ${activeSection === "home" ? "active" : ""}`}
+            onClick={() => setActiveSection("home")}
+          >
+            <span className="bottom-nav-icon">
+              <HomeIcon />
+            </span>
+            <span className="bottom-nav-label">Home</span>
+          </a>
+          <a
+            href="#features"
+            className={`bottom-nav-item ${activeSection === "features" ? "active" : ""}`}
+            onClick={() => setActiveSection("features")}
+          >
+            <span className="bottom-nav-icon">
+              <FeaturesIcon />
+            </span>
+            <span className="bottom-nav-label">Features</span>
+          </a>
+          <a
+            href="#how-it-works"
+            className={`bottom-nav-item ${activeSection === "how-it-works" ? "active" : ""}`}
+            onClick={() => setActiveSection("how-it-works")}
+          >
+            <span className="bottom-nav-icon">
+              <HowItWorksIcon />
+            </span>
+            <span className="bottom-nav-label">How it works</span>
+          </a>
+        </div>
+      </nav>
 
       <section className="hero">
         <div className="aurora" aria-hidden="true">
@@ -311,7 +322,7 @@ export default function A1aiLanding() {
         </div>
 
         <div className="container hero-grid">
-          <div data-reveal>
+          <div className="hero-copy-enter">
             <span className="eyebrow">
               <span className="dot" /> One workspace, two focused tools
             </span>
@@ -322,16 +333,18 @@ export default function A1aiLanding() {
             </h1>
             <p className="hero-sub">
               A1.ai brings AI smart chat and AI-powered data analysis into one
-              place — so you stop switching between a dozen tabs and get
+              place - so you stop switching between a dozen tabs and get
               straight to the answer, grounded in your own material.
             </p>
             <div className="hero-actions">
-              <SignUpButton mode="modal">
-                <MagneticButton className="btn btn-primary">
-                  Start free
-                  <ArrowIcon />
-                </MagneticButton>
-              </SignUpButton>
+              <MagneticButton
+                as={Link}
+                href="/dashboard"
+                className="btn btn-primary"
+              >
+                Start free
+                <ArrowIcon />
+              </MagneticButton>
               <MagneticButton
                 as="a"
                 href="#features"
@@ -342,11 +355,7 @@ export default function A1aiLanding() {
             </div>
           </div>
 
-          <div
-            className="doc-wrap"
-            data-reveal
-            style={{ transitionDelay: "120ms" }}
-          >
+          <div className="doc-wrap hero-card-enter">
             <div className="doc-glow" aria-hidden="true" />
             <div className="doc-card analyst-card">
               <i className="hud hud-tl" />
@@ -360,7 +369,7 @@ export default function A1aiLanding() {
                   <span className="file-dot" /> sales_q3.xlsx
                 </div>
                 <div className="doc-tab reading">
-                  <span className="pulse-dot" /> A1.ai is analyzing…
+                  <span className="pulse-dot" /> A1.ai is analyzing...
                 </div>
               </div>
 
@@ -433,10 +442,10 @@ export default function A1aiLanding() {
       <section className="features" id="features">
         <div className="container">
           <div className="section-head" data-reveal>
-            <div className="section-eyebrow">What&apos;s inside</div>
+            <div className="section-eyebrow">What's inside</div>
             <h2>Two tools. Zero clutter.</h2>
             <p>
-              Each one is built around a real thing you get stuck on — not a
+              Each one is built around a real thing you get stuck on - not a
               generic chatbot with a new coat of paint.
             </p>
           </div>
@@ -483,12 +492,14 @@ export default function A1aiLanding() {
             Get <span className="grad-text">clarity</span> faster.
           </h2>
           <p>Free to start. No credit card required.</p>
-          <SignUpButton mode="modal">
-            <MagneticButton className="btn btn-primary">
-              Start free
-              <ArrowIcon />
-            </MagneticButton>
-          </SignUpButton>
+          <MagneticButton
+            as={Link}
+            href="/dashboard"
+            className="btn btn-primary"
+          >
+            Start free
+            <ArrowIcon />
+          </MagneticButton>
         </div>
       </section>
 
@@ -503,7 +514,7 @@ export default function A1aiLanding() {
                 A1.ai
               </div>
               <p>
-                A focused AI workspace for chat and data analysis — built to
+                A focused AI workspace for chat and data analysis - built to
                 stay out of your way.
               </p>
             </div>
@@ -578,7 +589,7 @@ export default function A1aiLanding() {
             </div>
           </div>
           <div className="footer-bottom">
-            <span>© 2026 A1.ai. All rights reserved.</span>
+            <span>(c) 2026 A1.ai. All rights reserved.</span>
           </div>
         </div>
       </footer>
@@ -586,9 +597,53 @@ export default function A1aiLanding() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Inline icons                                                        */
-/* ------------------------------------------------------------------ */
+function HomeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 10.5 12 4l8 6.5" />
+      <path d="M6 9.5V19a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1V9.5" />
+    </svg>
+  );
+}
+function FeaturesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.4" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.4" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.4" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.4" />
+    </svg>
+  );
+}
+function HowItWorksIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6M17.7 17.7l-1.6-1.6M7.9 7.9 6.3 6.3" />
+    </svg>
+  );
+}
 
 function ArrowIcon() {
   return (
@@ -665,10 +720,6 @@ function InstagramIcon() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Styles                                                               */
-/* ------------------------------------------------------------------ */
-
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -701,7 +752,7 @@ body{
   -webkit-font-smoothing:antialiased; overflow-x:hidden;
 }
 a{ color:inherit; text-decoration:none; }
-.container{ max-width:1180px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+.container{ max-width:1180px; margin:0 auto; padding:0 28px; position:relative; z-index:1; }
 section{ position:relative; }
 
 .grain{
@@ -712,10 +763,13 @@ section{ position:relative; }
 [data-reveal]{ opacity:0; transform:translateY(22px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
 [data-reveal].is-in{ opacity:1; transform:translateY(0); }
 
-/* ---------- Nav ---------- */
-header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdrop-filter:blur(14px) saturate(140%); border-bottom:1px solid var(--border); }
-.nav{ display:flex; align-items:center; justify-content:space-between; padding:15px 0; }
-.logo{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:600; font-size:19px; }
+.hero-copy-enter, .hero-card-enter{ opacity:0; transform:translateY(18px); animation:heroRise .7s cubic-bezier(.16,1,.3,1) forwards; }
+.hero-card-enter{ animation-delay:.12s; }
+@keyframes heroRise{ to{ opacity:1; transform:translateY(0); } }
+
+header{ position:sticky; top:0; z-index:60; background:rgba(5,7,14,0.72); backdrop-filter:blur(14px) saturate(140%); border-bottom:1px solid var(--border); }
+.nav{ display:flex; align-items:center; justify-content:space-between; gap:24px; height:68px; }
+.logo{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:600; font-size:19px; color:var(--text-primary); text-decoration:none; flex-shrink:0; }
 .mark{ width:24px; height:24px; border-radius:7px; position:relative; background:conic-gradient(from 180deg, var(--amber), var(--violet), var(--cyan), var(--amber)); flex-shrink:0; animation:markSpin 6s linear infinite; padding:2px; }
 .mark-core{ position:absolute; inset:2px; border-radius:5px; background:var(--bg); }
 @keyframes markSpin{ to{ transform:rotate(360deg); } }
@@ -724,10 +778,13 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 .nav-links a::after{ content:''; position:absolute; left:0; right:0; bottom:-4px; height:1px; background:var(--violet); transform:scaleX(0); transition:transform .25s ease; }
 .nav-links a:hover{ color:var(--text-primary); }
 .nav-links a:hover::after{ transform:scaleX(1); }
-.nav-actions{ display:flex; align-items:center; gap:16px; }
+.nav-links a.active{ color:var(--text-primary); }
+.nav-links a.active::after{ transform:scaleX(1); }
+.bottom-nav{ display:none; }
+.nav-actions{ display:flex; align-items:center; gap:14px; flex-shrink:0; }
 .btn{
   font-family:var(--font-body); font-weight:600; font-size:14px; padding:10px 18px; border-radius:9px;
-  border:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px; position:relative; overflow:hidden;
+  border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; position:relative; overflow:hidden;
   transition:transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, background .2s ease, border-color .2s ease;
 }
 .btn-primary{ background:linear-gradient(135deg, var(--amber), #ffb238); color:#20130A; box-shadow:0 0 0 1px rgba(255,200,87,.15), 0 8px 24px -8px rgba(255,200,87,.55); }
@@ -737,14 +794,17 @@ header{ position:sticky; top:0; z-index:50; background:rgba(5,7,14,0.72); backdr
 .btn-outline{ background:rgba(255,255,255,0.02); border:1px solid var(--border); color:var(--text-primary); }
 .btn-outline:hover{ border-color:var(--violet); box-shadow:0 0 0 1px var(--violet-dim), 0 0 24px -6px rgba(140,124,240,.5); }
 .btn-lg{ padding:14px 24px; font-size:15px; }
+.btn-compact{ padding:9px 16px; font-size:13px; }
 .magnetic{ will-change:transform; }
-.menu-toggle{ display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:6px; position:relative; z-index:1; }
-.menu-toggle span{ width:20px; height:2px; background:var(--text-primary); border-radius:2px; transition:transform .25s ease, opacity .2s ease; }
-.menu-toggle.open span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
-.menu-toggle.open span:nth-child(2){ opacity:0; }
-.menu-toggle.open span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
 
-/* ---------- Hero ---------- */
+.btn-auth{
+  padding:9px 18px; font-size:13.5px; border-radius:9px;
+  border:1px solid var(--border); background:rgba(255,255,255,0.02); color:var(--text-secondary);
+}
+.btn-auth:hover{ color:var(--text-primary); border-color:var(--border-hover); }
+.signup-btn{ color:var(--amber); border-color:rgba(255,200,87,.35); background:var(--amber-dim); }
+.signup-btn:hover{ border-color:var(--amber); box-shadow:0 0 0 1px rgba(255,200,87,.2), 0 0 20px -6px rgba(255,200,87,.5); }
+
 .hero{ padding:96px 0 76px; overflow:hidden; }
 .aurora{ position:absolute; inset:-10% -10% auto -10%; height:780px; z-index:0; pointer-events:none; }
 .blob{ position:absolute; border-radius:50%; filter:blur(80px); opacity:.35; animation:drift 16s ease-in-out infinite; }
@@ -777,7 +837,6 @@ h1 em{ font-style:italic; color:var(--amber); }
 .hero-sub{ font-size:17px; line-height:1.6; color:var(--text-secondary); max-width:470px; margin-bottom:32px; }
 .hero-actions{ display:flex; align-items:center; gap:14px; margin-bottom:8px; }
 
-/* ---------- Signature doc card ---------- */
 .doc-wrap{ position:relative; }
 .doc-glow{
   position:absolute; inset:-28px; border-radius:26px;
@@ -830,7 +889,6 @@ h1 em{ font-style:italic; color:var(--amber); }
 .caret{ display:inline-block; width:6px; height:12px; background:var(--cyan); margin-left:2px; vertical-align:-2px; animation:blink .9s steps(2) infinite; }
 .doc-footer-chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; color:var(--cyan); margin-top:14px; }
 
-/* ---------- Trusted strip / marquee ---------- */
 .trusted-strip{ border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:20px 0; overflow:hidden; background:var(--bg-alt); }
 .marquee{ mask-image:linear-gradient(90deg, transparent, black 10%, black 90%, transparent); }
 .marquee-track{ display:flex; width:max-content; animation:marquee 26s linear infinite; }
@@ -838,13 +896,11 @@ h1 em{ font-style:italic; color:var(--amber); }
 .marquee-group span{ font-family:var(--font-mono); font-size:13px; letter-spacing:.05em; color:var(--text-tertiary); white-space:nowrap; }
 @keyframes marquee{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
 
-/* ---------- Section heads ---------- */
 .section-head{ text-align:center; max-width:560px; margin:0 auto 48px; }
 .section-eyebrow{ font-family:var(--font-mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); margin-bottom:12px; }
 .section-head h2{ font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3vw,34px); line-height:1.2; margin-bottom:12px; }
 .section-head p{ color:var(--text-secondary); font-size:15.5px; line-height:1.6; }
 
-/* ---------- Features ---------- */
 .features{ padding:104px 0 92px; }
 .feature-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:22px; max-width:840px; margin:0 auto; }
 .feature-card{
@@ -870,7 +926,6 @@ h1 em{ font-style:italic; color:var(--amber); }
 .feature-card h3{ font-family:var(--font-display); font-weight:600; font-size:20px; margin-bottom:11px; position:relative; z-index:1; }
 .feature-card p{ font-size:14.5px; color:var(--text-secondary); line-height:1.65; position:relative; z-index:1; }
 
-/* ---------- Process (How it works) ---------- */
 .process{ padding:92px 0 104px; background:var(--bg-alt); border-top:1px solid var(--border); border-bottom:1px solid var(--border); position:relative; overflow:hidden; }
 .process-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; max-width:980px; margin:0 auto; position:relative; }
 .process-grid::before{
@@ -895,13 +950,11 @@ h1 em{ font-style:italic; color:var(--amber); }
 .process-step h3{ font-family:var(--font-display); font-weight:600; font-size:19px; margin-bottom:10px; }
 .process-step p{ font-size:14px; color:var(--text-secondary); line-height:1.65; max-width:290px; }
 
-/* ---------- Final CTA ---------- */
 .final-cta{ padding:100px 0 110px; text-align:center; overflow:hidden; }
 .aurora-cta{ inset:auto -10% -20% -10%; height:420px; }
 .final-cta h2{ font-family:var(--font-display); font-weight:600; font-size:clamp(28px,3.6vw,42px); margin-bottom:16px; }
 .final-cta p{ color:var(--text-secondary); margin-bottom:30px; font-size:15.5px; }
 
-/* ---------- Footer ---------- */
 footer{ border-top:1px solid var(--border); padding:56px 0 34px; }
 .footer-grid{ display:grid; grid-template-columns:1.2fr repeat(3,1fr); gap:32px; margin-bottom:44px; }
 .footer-brand p{ font-size:13.5px; color:var(--text-tertiary); margin-top:14px; line-height:1.6; max-width:260px; }
@@ -911,7 +964,6 @@ footer{ border-top:1px solid var(--border); padding:56px 0 34px; }
 .footer-col a:hover{ color:var(--text-primary); }
 .footer-bottom{ border-top:1px solid var(--border); padding-top:24px; font-size:12.5px; color:var(--text-tertiary); }
 
-/* ---------- Footer: connect / socials / contact reveal ---------- */
 .social-row{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
 .social-icon{
   width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
@@ -926,28 +978,86 @@ footer{ border-top:1px solid var(--border); padding:56px 0 34px; }
 }
 .contact-email:hover{ color:var(--text-primary); border-color:var(--text-primary); }
 
-/* ---------- Responsive ---------- */
 @media (max-width:900px){
-  .hero-grid{ grid-template-columns:1fr; padding-top:10px; }
+  .container{ padding:0 20px; }
+  .hero-grid{ grid-template-columns:1fr; padding-top:6px; }
   .feature-grid{ grid-template-columns:1fr; max-width:440px; }
-  .process-grid{ grid-template-columns:1fr; gap:40px; max-width:440px; margin:0 auto; }
+  .process-grid{ grid-template-columns:1fr; gap:36px; max-width:440px; margin:0 auto; }
   .process-grid::before{ display:none; }
   .footer-grid{ grid-template-columns:1fr 1fr; }
-  .nav-links{ position:absolute; top:100%; left:0; right:0; flex-direction:column; align-items:flex-start; gap:0; background:rgba(5,7,14,.97); backdrop-filter:blur(14px); border-bottom:1px solid var(--border); max-height:0; overflow:hidden; transition:max-height .3s ease; }
-  .nav-links.open{ max-height:260px; }
-  .nav-links a{ padding:14px 24px; width:100%; }
-  .nav-actions .login-btn{ display:none; }
-  .menu-toggle{ display:flex; }
+
+  .nav-links{ display:none; }
+  .subnav{ display:none; }
+
+  .bottom-nav{
+    display:flex; justify-content:center; position:fixed; left:0; right:0; bottom:16px;
+    z-index:70; pointer-events:none;
+  }
+  .bottom-nav-inner{
+    pointer-events:auto; display:flex; gap:16px; background:rgba(10,14,26,0.82);
+    backdrop-filter:blur(18px) saturate(160%); border:1px solid rgba(148,163,196,0.14);
+    border-radius:999px; padding:10px 30px;
+    box-shadow:0 12px 30px -14px rgba(0,0,0,.7);
+  }
+  .bottom-nav-item{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    width:76px; height:54px; border-radius:16px; color:var(--text-tertiary);
+    transition:color .2s ease, background .2s ease, box-shadow .2s ease;
+  }
+  .bottom-nav-icon{ display:flex; }
+  .bottom-nav-icon svg{ width:18px; height:18px; }
+  .bottom-nav-label{
+    font-family:var(--font-body); font-size:9.5px; font-weight:500;
+    white-space:nowrap; line-height:1;
+  }
+  .bottom-nav-item.active{
+    color:#fff; background:#181D30; box-shadow:none;
+  }
+  .bottom-nav-item.active .bottom-nav-icon{ color:var(--cyan); }
+
+  body{ padding-bottom:86px; }
+
+  .hero{ padding:44px 0 56px; }
+  .features{ padding:72px 0 64px; }
+  .process{ padding:64px 0 72px; }
+  .final-cta{ padding:72px 0 80px; }
+
+  .blob{ filter:blur(50px); }
+  .blob-violet{ width:260px; height:260px; }
+  .blob-amber{ width:220px; height:220px; }
+  .blob-cyan{ width:200px; height:200px; }
 }
+
 @media (max-width:560px){
+  .container{ padding:0 16px; }
+  .nav{ height:60px; gap:10px; }
+  .logo{ font-size:16.5px; gap:8px; }
+  .mark{ width:20px; height:20px; }
+  .nav-actions{ gap:8px; }
+  .btn-auth{ padding:8px 12px; font-size:12.5px; }
+  .bottom-nav-inner{ gap:8px; padding:8px 14px; }
+  .bottom-nav-item{ width:64px; height:48px; border-radius:14px; }
+  .bottom-nav-label{ font-size:8.5px; }
   .footer-grid{ grid-template-columns:1fr; gap:28px; }
   .hero-actions{ flex-direction:column; align-items:stretch; }
-  .hero-actions .btn{ justify-content:center; }
+  .hero-actions .btn{ justify-content:center; width:100%; }
+  h1{ font-size:clamp(28px,8vw,36px); line-height:1.16; }
+  .hero-sub{ font-size:15.5px; max-width:none; }
+  .eyebrow{ font-size:10.5px; }
+
   .analyst-stats{ gap:8px; }
-  h1{ font-size:clamp(30px,8vw,40px); }
+  .analyst-stat{ padding:9px 11px; }
+  .stat-value{ font-size:16px; }
+  .doc-card{ padding:16px; }
+  .annotation{ font-size:12px; min-height:56px; }
+
+  .section-head h2{ font-size:24px; }
+  .section-head p{ font-size:14.5px; }
+  .final-cta h2{ font-size:26px; }
 }
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; }
   [data-reveal]{ opacity:1 !important; transform:none !important; }
+  .hero-copy-enter, .hero-card-enter{ opacity:1 !important; transform:none !important; }
 }
 `;
