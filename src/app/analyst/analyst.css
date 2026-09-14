@@ -1630,3 +1630,587 @@
     transition: none !important;
   }
 }
+
+
+/* ================================================================
+   A1.ai — FINAL MOBILE RESPONSIVE HARDENING
+   Applied to the latest analyst stylesheet.
+   Desktop layout is intentionally left unchanged.
+   ================================================================ */
+
+/* Never allow the Analyst workspace to create viewport-level
+   horizontal scrolling on mobile. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.analyst-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.analyst-shell > * {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.analysis-results {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Let every result component shrink instead of forcing a wider
+   flex/grid track. */
+.results-header,
+.results-header > *,
+.results-overview-grid,
+.result-overview-card,
+.roc-body,
+.results-row,
+.results-section,
+.results-section-heading,
+.results-section-heading > *,
+.numeric-results-grid,
+.numeric-result-card,
+.metric-card-top,
+.metric-column,
+.metric-main,
+.metric-details,
+.categorical-results-grid,
+.categorical-result-card,
+.category-card-header,
+.category-card-header > *,
+.category-stats,
+.top-values,
+.top-value-row,
+.top-value-line,
+.data-quality-card,
+.ai-insights-placeholder,
+.ai-insights-copy,
+.results-meta {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Long values must wrap rather than widen the page. */
+.results-file-name,
+.results-description,
+.metric-column,
+.metric-main,
+.category-card-header h4,
+.top-value-line,
+.top-value-line span,
+.top-value-line strong,
+.data-quality-card h4,
+.data-quality-card p,
+.ai-insights-placeholder h3,
+.ai-insights-placeholder p,
+.results-meta span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ---------------- MOBILE/TABLET WORKSPACE ---------------- */
+
+@media (max-width: 900px) {
+  .analyst-shell {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .analyst-shell .analysis-results {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 24px 0 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Keep result sections inside the actual viewport. */
+  .results-row {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .results-row > *,
+  .results-section,
+  .ai-insights-placeholder {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .results-row > * + * {
+    margin-top: 14px !important;
+  }
+
+  .results-overview-grid {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .categorical-results-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* The AI chat must not participate in the desktop flex layout. */
+  .ai-chat-panel {
+    position: fixed !important;
+    top: max(10px, env(safe-area-inset-top)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .ai-chat-panel,
+  .ai-chat-panel * {
+    min-width: 0;
+  }
+
+  .ai-chat-topbar,
+  .ai-chat-header,
+  .ai-chat-messages,
+  .ai-chat-form,
+  .ai-chat-note,
+  .ai-chat-suggestions {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .ai-chat-messages {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ai-chat-message,
+  .ai-chat-message-content,
+  .ai-chat-markdown,
+  .ai-chat-markdown p,
+  .ai-chat-markdown li,
+  .ai-chat-markdown code {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .ai-chat-form input {
+    min-width: 0 !important;
+    width: 100%;
+  }
+}
+
+/* ---------------- PHONES ---------------- */
+
+@media (max-width: 650px) {
+  .analysis-results {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 18px !important;
+    padding: 0 14px 90px !important;
+  }
+
+  .results-header {
+    width: 100%;
+    margin-bottom: 22px;
+  }
+
+  .results-header h2 {
+    font-size: clamp(27px, 8vw, 34px);
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+
+  .results-file-name {
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
+  .results-description {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .results-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .result-overview-card {
+    width: 100%;
+    min-height: 108px;
+    padding: 17px;
+  }
+
+  .roc-body strong {
+    font-size: 26px;
+  }
+
+  .results-section {
+    width: 100%;
+    padding: 18px !important;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .results-section-heading {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .results-section-heading h3 {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .numeric-results-grid,
+  .categorical-results-grid {
+    width: 100%;
+    grid-template-columns: 1fr !important;
+  }
+
+  .numeric-result-card,
+  .categorical-result-card {
+    width: 100%;
+    padding: 17px;
+    overflow: hidden;
+  }
+
+  .metric-card-top {
+    width: 100%;
+  }
+
+  .metric-details {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .metric-details span {
+    font-size: 9px;
+    overflow-wrap: anywhere;
+  }
+
+  .metric-details strong {
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+  }
+
+  .category-card-header {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .category-stats {
+    flex-wrap: wrap;
+    gap: 7px 12px;
+  }
+
+  .top-value-line {
+    align-items: flex-start;
+  }
+
+  .data-quality-card {
+    width: 100%;
+    align-items: flex-start;
+    padding: 17px;
+  }
+
+  .ai-insights-placeholder {
+    width: 100%;
+    padding: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    overflow: hidden;
+  }
+
+  .results-meta {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Mobile AI chat: use the full usable viewport and prevent the
+     old 400px desktop min-width from ever returning. */
+  .ai-chat-panel {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+
+    padding: 18px 15px 13px !important;
+    border-radius: 18px;
+  }
+
+  .ai-chat-topbar {
+    gap: 8px;
+    padding-bottom: 14px;
+  }
+
+  .ai-chat-actions {
+    flex-shrink: 0;
+  }
+
+  .ai-chat-header {
+    padding: 17px 0 13px;
+  }
+
+  .ai-chat-header h3 {
+    max-width: 100%;
+    font-size: clamp(23px, 7.4vw, 29px);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  .ai-chat-header p {
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .ai-chat-messages {
+    padding: 13px;
+    border-radius: 14px;
+  }
+
+  .ai-chat-message {
+    max-width: 96%;
+    margin-bottom: 14px;
+  }
+
+  .ai-chat-message > div {
+    font-size: 12.5px;
+    line-height: 1.58;
+  }
+
+  .ai-chat-message-content {
+    padding: 12px 13px;
+  }
+
+  .ai-chat-form {
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .ai-chat-form input {
+    height: 48px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .ai-chat-form button {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ai-chat-note {
+    font-size: 8.5px;
+    line-height: 1.35;
+  }
+
+  .ai-chat-fab {
+    right: 12px;
+    top: 74px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .ai-chat-suggestions {
+    gap: 7px;
+  }
+
+  .ai-chat-suggestions button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ---------------- VERY SMALL PHONES ---------------- */
+
+@media (max-width: 390px) {
+  .analysis-results {
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+  }
+
+  .results-section {
+    padding: 15px !important;
+  }
+
+  .result-overview-card {
+    padding: 15px;
+  }
+
+  .metric-details {
+    gap: 5px;
+  }
+
+  .metric-details span {
+    font-size: 8.5px;
+  }
+
+  .metric-details strong {
+    font-size: 11.5px;
+  }
+
+  .ai-chat-panel {
+    top: 6px !important;
+    right: 6px !important;
+    bottom: 6px !important;
+    left: 6px !important;
+    padding: 15px 12px 11px !important;
+  }
+
+  .ai-chat-message {
+    max-width: 98%;
+  }
+
+  .ai-chat-message-content {
+    padding: 11px 12px;
+  }
+
+  .ai-chat-form input {
+    height: 46px;
+  }
+
+  .ai-chat-form button {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+
+/* ================================================================
+   FINAL MOBILE CHAT FIX
+   1) Chat opens edge-to-edge and fills the mobile viewport.
+   2) "Ask A1.ai" FAB moves to the bottom on mobile.
+   ================================================================ */
+
+@media (max-width: 900px) {
+  .ai-chat-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .ai-chat-messages {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .ai-chat-form {
+    flex-shrink: 0 !important;
+  }
+
+  .ai-chat-fab {
+    top: auto !important;
+    right: 14px !important;
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px)) !important;
+    left: auto !important;
+    max-width: calc(100vw - 28px) !important;
+  }
+}
+
+@media (max-width: 650px) {
+  .ai-chat-panel {
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding:
+      max(14px, env(safe-area-inset-top))
+      14px
+      max(12px, env(safe-area-inset-bottom))
+      14px !important;
+    border-radius: 0 !important;
+  }
+
+  .ai-chat-topbar {
+    flex-shrink: 0 !important;
+  }
+
+  .ai-chat-header {
+    flex-shrink: 0 !important;
+  }
+
+  .ai-chat-messages {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .ai-chat-form {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .ai-chat-note {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+  }
+
+  .ai-chat-fab {
+    top: auto !important;
+    right: 12px !important;
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px)) !important;
+    left: auto !important;
+    height: 50px !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .ai-chat-panel {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      11px
+      max(9px, env(safe-area-inset-bottom))
+      11px !important;
+  }
+
+  .ai-chat-fab {
+    right: 10px !important;
+    bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px)) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+}
