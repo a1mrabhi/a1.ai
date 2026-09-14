@@ -178,27 +178,42 @@ function normalizeA1Question(value: string) {
 function getHardcodedA1Response(content: string): string | null {
   const normalized = normalizeA1Question(content);
 
-  const mentionsA1 =
-    /\ba1\.ai\b|\ba1\s*ai\b/i.test(normalized);
+  const mentionsA1 = /\ba1\.ai\b|\ba1\s*ai\b/i.test(normalized);
 
-  if (!mentionsA1) return null;
-
-  if (
-    /\b(founder|founding|created|creator|who\s+(?:is|was)|who\s+founded|owner)\b/i.test(
+  // Founder questions about A1.ai.
+  const founderQuestion =
+    /\b(founder|founding|founded|creator|created|owner)\b/i.test(normalized) ||
+    /\bwho\s+(?:is|was)\s+(?:your|the)?\s*(?:founder|creator|owner)\b/i.test(
       normalized,
-    ) &&
-    /\ba1\.ai\b/i.test(normalized)
+    ) ||
+    /\bwho\s+(?:founded|created|made)\b/i.test(normalized) ||
+    /\bwho\s+made\s+you\b/i.test(normalized) ||
+    /\babhishek\s+kumar\s+tiwari\b/i.test(normalized);
+
+  // Explicit A1.ai founder questions.
+  if (founderQuestion && mentionsA1) {
+    return A1_AI_FOUNDER_RESPONSE;
+  }
+
+  // Because this function is used inside A1.ai Smart Chat, natural
+  // questions such as "Who is your founder?" also refer to A1.ai.
+  if (
+    founderQuestion &&
+    /(?:your|the)\s+(?:founder|creator|owner)\b|who\s+(?:founded|created|made)\b|who\s+made\s+you\b/i.test(
+      normalized,
+    )
   ) {
     return A1_AI_FOUNDER_RESPONSE;
   }
 
+  // Other deterministic A1.ai FAQ responses.
   for (const item of A1_AI_FAQ_RESPONSES) {
     if (item.pattern.test(normalized)) {
       return item.response;
     }
   }
 
-  // Catch direct "what is A1.ai" variations, including longer wording.
+  // Direct "what is A1.ai?" variations, including longer wording.
   if (
     /\bwhat\s+(?:exactly\s+)?is\b/i.test(normalized) &&
     /\ba1\.ai\b/i.test(normalized)
@@ -206,8 +221,7 @@ function getHardcodedA1Response(content: string): string | null {
     return A1_AI_ABOUT_RESPONSE;
   }
 
-  // If a user asks a broad product question containing A1.ai, keep the answer
-  // deterministic instead of sending it to the model.
+  // Broad A1.ai product questions.
   if (
     /\b(a1\.ai|a1\s*ai)\b/i.test(normalized) &&
     /\b(product|platform|app|application|workspace|software|tool|service|company)\b/i.test(
