@@ -1639,11 +1639,18 @@
    ================================================================ */
 
 /* Never allow the Analyst workspace to create viewport-level
-   horizontal scrolling on mobile. */
-html,
-body {
-  max-width: 100%;
-  overflow-x: hidden;
+   horizontal scrolling on mobile.
+   NOTE: this must stay scoped to the mobile breakpoint — applying
+   overflow-x: hidden to html/body at ALL widths forces overflow-y
+   into an implicit scroll container on html/body too, which breaks
+   `position: sticky` on the desktop chat panel (it starts scrolling
+   away with the page instead of staying pinned). */
+@media (max-width: 900px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
 }
 
 .analyst-shell {
@@ -2212,5 +2219,86 @@ body {
     right: 10px !important;
     bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px)) !important;
     max-width: calc(100vw - 20px) !important;
+  }
+}
+
+
+/* ================================================================
+   DESKTOP CHAT SCROLL REGRESSION FIX
+   Restore the original desktop two-pane behavior:
+   - left Analyst results page scrolls normally
+   - right chat panel stays sticky while the page scrolls
+   - only the messages area inside the chat can scroll
+   - mobile rules below 900px continue to use the full-screen chat
+   ================================================================ */
+
+@media (min-width: 901px) {
+  .analyst-shell {
+    display: flex !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .analyst-shell .analysis-results {
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 1180px !important;
+    margin: 40px auto 0 !important;
+  }
+
+  .ai-chat-panel {
+    position: sticky !important;
+    top: 85px !important;
+    align-self: flex-start !important;
+    flex: 0 0 50% !important;
+    width: 50% !important;
+    height: calc(100vh - 85px - 24px) !important;
+    max-height: calc(100vh - 85px - 24px) !important;
+    min-width: 400px !important;
+    margin: 24px 28px 24px 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .ai-chat-messages {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+}
+
+/* At the tablet/mobile breakpoint, deliberately override the
+   desktop sticky rules and keep the chat as the mobile overlay. */
+@media (max-width: 900px) {
+  .ai-chat-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .ai-chat-messages {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .ai-chat-fab {
+    top: auto !important;
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px)) !important;
   }
 }
